@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { existsSync } from 'fs'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import type { Diagnostic, LintRunRequest } from '../../shared/types'
 import type { PluginApiDeps } from './types'
 
@@ -42,12 +42,24 @@ export function registerLintApi(deps: PluginApiDeps): void {
     ctx.requirePermission('lint:run')
 
     const state = deps.getEditorState()
-    const targetPath =
-      typeof request?.filePath === 'string' && request.filePath
-        ? ctx.resolveWithinAllowedRoot(request.filePath)
-        : state?.path
-          ? ctx.resolveWithinAllowedRoot(state.path)
-          : null
+    const projectRoot = deps.getProjectRoot()
+
+    // 目标文件：优先用插件显式传入的 filePath，否则用编辑器当前文件。
+    // 安全约束：目标文件必须是"项目根目录内"的文件（受信任的项目范围），
+    // 或等于编辑器当前打开的文件，防止插件 lint 任意系统文件。
+    let targetPath: string | null = null
+    if (typeof request?.filePath === 'string' && request.filePath) {
+      const abs = resolve(request.filePath)
+      if (projectRoot && ctx.isWithinRoots(abs, [projectRoot])) {
+        targetPath = abs
+      } else if (state?.path && resolve(state.path) === abs) {
+        targetPath = abs
+      } else {
+        throw new Error(`拒绝访问：目标文件不在当前项目范围内（${abs}）`)
+      }
+    } else if (state?.path) {
+      targetPath = state.path
+    }
 
     if (!targetPath) {
       throw new Error('未指定要 lint 的文件，且编辑器当前无打开文件')
@@ -56,11 +68,8 @@ export function registerLintApi(deps: PluginApiDeps): void {
       throw new Error(`目标文件不存在: ${targetPath}`)
     }
 
-    // cwd 优先用项目根（解析 eslint 配置与 node_modules）
-    const cwd =
-      typeof request?.cwd === 'string' && request.cwd
-        ? ctx.resolveWithinAllowedRoot(request.cwd)
-        : (deps.getProjectRoot() ?? ctx.resolveWithinAllowedRoot('.'))
+    // cwd：优先用项目根（解析 eslint 配置与 node_modules），否则回退插件目录
+    const cwd = projectRoot ?? ctx.resolveWithinAllowedRoot('.')
 
     const diagnostics = await runEslint(cwd, targetPath)
     return { filePath: targetPath, diagnostics }
@@ -68,28 +77,68 @@ export function registerLintApi(deps: PluginApiDeps): void {
 }
 
 async function runEslint(cwd: string, targetPath: string): Promise<Diagnostic[]> {
-  const localBin = join(cwd, 'node_modules', '.bin', process.platform === 'win32' ? 'eslint.cmd' : 'eslint')
-  const eslintBin = existsSync(localBin) ? localBin : 'eslint'
+  // 定位 eslint：优先项目本地 node_modules/eslint/bin/eslint.js（用 node 执行，避免 .cmd 在 Windows 的 spawn EINVAL）
+  const localEslintJs = join(cwd, 'node_modules', 'eslint', 'bin', 'eslint.js')
+  let command: string
+  let args: string[]
+  if (existsSync(localEslintJs)) {
+    // 主进程是 Electron，process.execPath 指向 electron.exe；
+    // 通过 ELECTRON_RUN_AS_NODE=1 让 Electron 以 Node 模式运行 eslint.js
+    command = process.execPath
+    args = [localEslintJs, targetPath, '--format', 'json']
+    return runEslintWithNode(command, args, cwd)
+  } else {
+    // 回退：全局 eslint（Windows 用 .cmd 需 shell）
+    command = process.platform === 'win32' ? 'eslint.cmd' : 'eslint'
+    args = [targetPath, '--format', 'json']
+    return runEslintGeneric(command, args, cwd, command.endsWith('.cmd'))
+  }
+}
 
+async function runEslintWithNode(
+  command: string,
+  args: string[],
+  cwd: string
+): Promise<Diagnostic[]> {
   let stdout: string
   try {
-    const result = await execFileAsync(eslintBin, [targetPath, '--format', 'json'], {
+    const result = await execFileAsync(command, args, {
       cwd,
       maxBuffer: MAX_OUTPUT,
       timeout: 30000,
-      windowsHide: true
+      windowsHide: true,
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
     })
     stdout = result.stdout
   } catch (error) {
-    // ESLint 发现问题时返回非零退出码，但 stdout 仍含 JSON 结果
-    const e = error as { stdout?: string; stderr?: string }
-    if (e.stdout) {
-      stdout = e.stdout
-    } else {
-      throw new Error(`ESLint 执行失败: ${(e.stderr || '未知错误').slice(0, 500)}`)
-    }
+    const e = error as { stdout?: string; stderr?: string; message?: string }
+    if (e.stdout) stdout = e.stdout
+    else throw new Error(`ESLint 执行失败: ${(e.stderr || e.message || '未知错误').slice(0, 500)}`)
   }
+  return parseEslintJson(stdout)
+}
 
+async function runEslintGeneric(
+  command: string,
+  args: string[],
+  cwd: string,
+  useShell: boolean
+): Promise<Diagnostic[]> {
+  let stdout: string
+  try {
+    const result = await execFileAsync(command, args, {
+      cwd,
+      maxBuffer: MAX_OUTPUT,
+      timeout: 30000,
+      windowsHide: true,
+      shell: useShell
+    })
+    stdout = result.stdout
+  } catch (error) {
+    const e = error as { stdout?: string; stderr?: string; message?: string }
+    if (e.stdout) stdout = e.stdout
+    else throw new Error(`ESLint 执行失败: ${(e.stderr || e.message || '未知错误').slice(0, 500)}`)
+  }
   return parseEslintJson(stdout)
 }
 

@@ -31,6 +31,21 @@ export class PluginSecurityContext {
   }
 
   /**
+   * 校验某个绝对路径是否落在指定根目录内（用于 git/lint 等需访问项目文件的场景）。
+   * 与 resolveWithinAllowedRoot 不同：它不基于插件目录解析相对路径，
+   * 而是直接判断给定的绝对路径是否属于某个受信任根目录。
+   */
+  isWithinRoots(absPath: string, roots: string[]): boolean {
+    for (const root of roots) {
+      const rel = relative(root, absPath)
+      if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
    * 解析并校验文件路径：
    * 1. 解析为绝对路径（相对路径基于插件目录解析）
    * 2. 必须在允许根目录范围内（防目录穿越 / 任意文件读写）
