@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type {
   AIChatRequest,
   AppSettings,
+  CheckUpdateResult,
   Diagnostic,
   EditorApplyAction,
   EditorShowDiagnosticsAction,
@@ -9,7 +10,8 @@ import type {
   FileOpenResult,
   FileSaveResult,
   FolderOpenResult,
-  PluginInfo
+  PluginInfo,
+  UpdateState
 } from '../shared/types'
 
 // 通过 contextBridge 向渲染进程暴露受限 API。
@@ -192,7 +194,7 @@ const api = {
       ipcRenderer.invoke('shell:open-external', url),
     openLogs: (): Promise<{ ok: boolean; path: string }> => ipcRenderer.invoke('shell:open-logs')
   },
-  /** 应用信息（菜单栏"帮助"菜单） */
+  /** 应用信息 & 自动更新（菜单栏"帮助"菜单） */
   app: {
     about: (): Promise<{
       name: string
@@ -202,8 +204,15 @@ const api = {
       node: string
       platform: string
     }> => ipcRenderer.invoke('app:about'),
-    checkUpdate: (): Promise<{ available: boolean; version: string }> =>
-      ipcRenderer.invoke('app:check-update')
+    checkUpdate: (): Promise<CheckUpdateResult> => ipcRenderer.invoke('app:check-update'),
+    downloadUpdate: (): Promise<{ ok: boolean; error?: string }> =>
+      ipcRenderer.invoke('app:download-update'),
+    installUpdate: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('app:install-update'),
+    onUpdateState: (callback: (state: UpdateState) => void): (() => void) => {
+      const listener = (_event: unknown, state: UpdateState): void => callback(state)
+      ipcRenderer.on('app:update-state', listener)
+      return () => ipcRenderer.removeListener('app:update-state', listener)
+    }
   }
 }
 

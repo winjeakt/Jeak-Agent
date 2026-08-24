@@ -18,6 +18,7 @@ import { registerWindowControls } from './windowControls'
 import { registerMenuIpc } from './menuIpc'
 import { createTray, destroyTray } from './tray'
 import { createAppIcon } from './icon'
+import { setupAutoUpdater } from './updater'
 
 /* ==================== 全局错误处理 ==================== */
 
@@ -252,6 +253,9 @@ app.whenReady().then(() => {
     getRecentProjects: () => store.get('recentProjects', []),
     setRecentProjects: (list) => store.set('recentProjects', list)
   })
+
+  // 自动更新（electron-updater，更新源见 electron-builder.yml 的 publish）
+  setupAutoUpdater(() => mainWindow)
 
   createMainWindow()
 

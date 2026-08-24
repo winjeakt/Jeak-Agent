@@ -198,9 +198,4 @@ export function registerMenuIpc(opts: MenuIpcOptions): void {
     node: process.versions.node,
     platform: process.platform
   }))
-
-  ipcMain.handle('app:check-update', async () => {
-    // 占位：后续接入更新源
-    return { available: false, version: app.getVersion() }
-  })
 }

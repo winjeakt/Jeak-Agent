@@ -29,9 +29,26 @@ export function useHelpMenuItems(): MenuItem[] {
       id: 'check-update',
       label: t('menu.help.checkUpdate'),
       onClick: () => {
-        void window.jeak.app.checkUpdate().then((r) => {
-          window.alert(r.available ? `发现新版本 ${r.version}` : '已是最新版本')
-        })
+        void (async (): Promise<void> => {
+          const r = await window.jeak.app.checkUpdate()
+          if (r.dev) {
+            window.alert('开发模式无法检查更新，请使用打包后的应用')
+            return
+          }
+          if (!r.available) {
+            window.alert('已是最新版本')
+            return
+          }
+          const doDownload = window.confirm(`发现新版本 v${r.version}，是否立即下载更新？`)
+          if (!doDownload) return
+          const dl = await window.jeak.app.downloadUpdate()
+          if (!dl.ok) {
+            window.alert(`下载失败：${dl.error ?? '未知错误'}`)
+            return
+          }
+          const doInstall = window.confirm(`新版本 v${r.version} 已下载完成，是否重启并安装？`)
+          if (doInstall) void window.jeak.app.installUpdate()
+        })()
       }
     },
     { id: 'sep-2', label: '', separator: true },

@@ -162,8 +162,8 @@ cp -r my-plugin ~/.jeak/plugins/
 - [x] **Phase 2** — AI 能力（DeepSeek 流式对话、代码解释）
 - [x] **Phase 3** — 插件系统（发现、加载、沙箱运行时）
 - [x] **Phase 4** — 核心插件（代码格式化、Git 辅助、ESLint 集成）
-- [ ] **Phase 5** — 文件系统（项目打开、文件树、文件保存）
-- [ ] **Phase 6** — 体验优化与打包发布
+- [x] **Phase 5** — 文件系统（项目打开、文件树、文件保存）
+- [x] **Phase 6** — 体验优化与打包发布（electron-builder 三平台 + GitHub Actions + 自动更新）
 
 ## 📄 License
 

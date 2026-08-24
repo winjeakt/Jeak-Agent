@@ -292,3 +292,34 @@ export interface FolderOpenResult {
   canceled: boolean
   path?: string
 }
+
+/* ==================== Phase 6：自动更新 ==================== */
+
+/** 自动更新状态 */
+export type UpdateStatus =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'not-available'
+  | 'downloading'
+  | 'downloaded'
+  | 'error'
+
+/** 更新状态快照（主进程 -> 渲染进程） */
+export interface UpdateState {
+  status: UpdateStatus
+  /** 目标版本号（available / downloaded 时有效） */
+  version: string
+  /** 下载进度（0-100） */
+  percent: number
+  /** 错误信息 */
+  error: string | null
+}
+
+/** 检查更新结果 */
+export interface CheckUpdateResult {
+  available: boolean
+  version: string
+  /** 是否为开发模式（未打包） */
+  dev?: boolean
+}

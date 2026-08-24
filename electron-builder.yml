@@ -4,6 +4,12 @@ directories:
   buildResources: build
   output: dist
 
+publish:
+  provider: github
+  owner: winjeakt
+  repo: Jeak-Agent
+  releaseType: release
+
 files:
   - out/**/*
   - package.json
@@ -32,6 +38,7 @@ mac:
         - arm64
         - x64
   category: public.app-category.developer-tools
+  icon: build/icon-512.png
   identity: null
 
 linux:
@@ -41,3 +48,4 @@ linux:
         - x64
   category: Development
   maintainer: jeak
+  icon: build/icon-512.png
