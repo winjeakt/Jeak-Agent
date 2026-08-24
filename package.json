@@ -1,0 +1,38 @@
+{
+  "name": "jeak-agent",
+  "version": "0.1.0",
+  "description": "Jeak Agent - AI Native 本地化编程助手桌面平台",
+  "main": "./out/main/main.js",
+  "author": "jeak",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
+    "typecheck:web": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "build:win": "electron-vite build && electron-builder --win",
+    "build:mac": "electron-vite build && electron-builder --mac",
+    "build:linux": "electron-vite build && electron-builder --linux"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.6.0",
+    "electron-store": "^8.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
+  }
+}
