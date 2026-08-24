@@ -1,0 +1,18 @@
+{
+  "$schema": "https://jeak.dev/schemas/plugin-1.0.json",
+  "name": "eslint-integration",
+  "version": "1.0.0",
+  "description": "对当前文件运行 ESLint，在编辑器底部问题面板展示错误与警告列表。",
+  "author": "jeak",
+  "license": "MIT",
+  "entry": "main.js",
+  "permissions": ["lint:run", "editor:get", "editor:apply"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "eslint-integration.lint",
+        "title": "检查当前文件"
+      }
+    ]
+  }
+}

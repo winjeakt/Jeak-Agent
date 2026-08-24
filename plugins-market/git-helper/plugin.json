@@ -1,0 +1,26 @@
+{
+  "$schema": "https://jeak.dev/schemas/plugin-1.0.json",
+  "name": "git-helper",
+  "version": "1.0.0",
+  "description": "Git 助手：查看工作区/暂存区 diff、生成规范化的 commit message（借助 AI）。",
+  "author": "jeak",
+  "license": "MIT",
+  "entry": "main.js",
+  "permissions": ["git:diff", "git:status", "git:run", "ai:chat", "editor:get", "editor:apply"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "git-helper.diff",
+        "title": "查看工作区 diff"
+      },
+      {
+        "command": "git-helper.diff-staged",
+        "title": "查看暂存区 diff"
+      },
+      {
+        "command": "git-helper.commit-message",
+        "title": "生成 commit message"
+      }
+    ]
+  }
+}
