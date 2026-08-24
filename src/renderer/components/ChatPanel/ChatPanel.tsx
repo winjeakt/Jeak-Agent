@@ -3,7 +3,7 @@ import type { AIChatModel } from '@shared/types'
 import { useChatStore } from '../../stores/chatStore'
 import type { ChatMessage } from '../../stores/chatStore'
 import { useT } from '../../stores/i18nStore'
-import ChatSettings from './ChatSettings'
+import { useUIStore } from '../../stores/uiStore'
 import { MODEL_OPTIONS } from '../../constants/models'
 
 function MessageItem({ message }: { message: ChatMessage }): JSX.Element {
@@ -38,8 +38,8 @@ export default function ChatPanel(): JSX.Element {
   const clearMessages = useChatStore((s) => s.clearMessages)
 
   const [input, setInput] = useState('')
-  const [showSettings, setShowSettings] = useState(false)
   const [sendShortcut, setSendShortcut] = useState('Enter')
+  const openSettings = useUIStore((s) => s.openSettings)
   const listRef = useRef<HTMLDivElement>(null)
 
   // 新消息时自动滚动到底部
@@ -100,7 +100,7 @@ export default function ChatPanel(): JSX.Element {
               </option>
             ))}
           </select>
-          <button onClick={() => setShowSettings(true)} title={t('chat.settings')}>
+          <button onClick={openSettings} title={t('chat.settings')}>
             ⚙
           </button>
           <button onClick={clearMessages} title={t('chat.clear')}>
@@ -148,7 +148,6 @@ export default function ChatPanel(): JSX.Element {
         </div>
       </div>
 
-      {showSettings && <ChatSettings onClose={() => setShowSettings(false)} />}
     </div>
   )
 }

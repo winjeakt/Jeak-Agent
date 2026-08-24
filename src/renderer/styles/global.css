@@ -16,6 +16,10 @@
   --input-bg: #1a1a1a;
   --panel-header-bg: rgba(0, 0, 0, 0.15);
   --hover-bg: rgba(255, 255, 255, 0.06);
+  --topbar-bg: #1e1e2e;
+  --dropdown-bg: rgba(30, 30, 46, 0.92);
+  --menu-hover-bg: #0e639c;
+  --menu-hover-text: #ffffff;
 }
 
 /* ===== 浅色主题变量 ===== */
@@ -31,6 +35,10 @@
   --input-bg: #ffffff;
   --panel-header-bg: rgba(0, 0, 0, 0.04);
   --hover-bg: rgba(0, 0, 0, 0.05);
+  --topbar-bg: #f5f5f5;
+  --dropdown-bg: rgba(245, 245, 245, 0.95);
+  --menu-hover-bg: #0066cc;
+  --menu-hover-text: #ffffff;
 }
 
 body {
@@ -41,11 +49,21 @@ body {
   user-select: none;
 }
 
+/* ===== 应用根容器（标题栏 + 三栏） ===== */
+.app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
 /* ===== 三栏布局 ===== */
 .app-shell {
   display: flex;
-  height: 100vh;
-  width: 100vw;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
 }
 
 .app-shell__filetree {
@@ -487,13 +505,13 @@ body {
 }
 
 .settings-card__tabs button:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  background: var(--menu-hover-bg, #0e639c);
+  color: var(--menu-hover-text, #ffffff);
 }
 
 .settings-card__tabs button.active {
-  background: rgba(14, 99, 156, 0.25);
-  color: #9cdcfe;
+  background: var(--menu-hover-bg, #0e639c);
+  color: var(--menu-hover-text, #ffffff);
 }
 
 /* ===== Phase 3：插件管理 ===== */
@@ -734,7 +752,19 @@ body {
 }
 
 .diagnostics__item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--menu-hover-bg, #0e639c);
+}
+
+.diagnostics__item:hover .diagnostics__msg {
+  color: var(--menu-hover-text, #ffffff);
+}
+
+.diagnostics__item:hover .diagnostics__loc {
+  color: var(--menu-hover-text, #ffffff);
+}
+
+.diagnostics__item:hover .diagnostics__rule {
+  color: var(--menu-hover-text, #ffffff);
 }
 
 .diagnostics__icon {
@@ -1004,4 +1034,147 @@ body {
   background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
+}
+
+/* ===== Phase 6：编辑器顶部工具栏（布局切换） ===== */
+.editor-toolbar {
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--panel-header-bg);
+}
+
+.editor-toolbar__title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.editor-toolbar__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.editor-toolbar__btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 3px 8px;
+  line-height: 1;
+}
+
+.editor-toolbar__btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.editor-toolbar__btn--active {
+  background: rgba(14, 99, 156, 0.25);
+  color: #9cdcfe;
+  border-color: rgba(14, 99, 156, 0.4);
+}
+
+/* ===== Phase 6：终端 ===== */
+.terminal {
+  height: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border-color);
+  background: var(--input-bg);
+}
+
+.terminal__header {
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 11px;
+}
+
+.terminal__title {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.terminal__actions button {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
+.terminal__actions button:hover {
+  color: var(--text-primary);
+}
+
+.terminal__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  user-select: text;
+}
+
+.terminal__hint {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.terminal__line {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.terminal__line--stdout {
+  color: var(--text-primary);
+}
+
+.terminal__line--stderr {
+  color: #f14c4c;
+}
+
+.terminal__line--system {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.terminal__input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.terminal__prompt {
+  color: #57b964;
+  flex-shrink: 0;
+}
+
+.terminal__input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+  padding: 0;
 }

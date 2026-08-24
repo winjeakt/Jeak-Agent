@@ -10,9 +10,11 @@ import type {
   AppSettings,
   Theme
 } from '../shared/types'
-import { DEFAULT_SHORTCUTS } from '../shared/types'
+import { DEFAULT_SHORTCUTS, DEFAULT_LAYOUT } from '../shared/types'
 import { AIService } from './services/AIService'
 import { PluginManager } from '../plugins/runtime/manager'
+import { TerminalService, registerTerminalIpc } from './services/TerminalService'
+import { registerWindowControls } from './windowControls'
 
 /* ==================== 全局错误处理 ==================== */
 
@@ -58,7 +60,8 @@ function createStore(): Store<AppSettings> {
       ai: DEFAULT_AI_SETTINGS,
       plugins: { disabled: [] as string[] },
       onboarded: false,
-      shortcuts: DEFAULT_SHORTCUTS
+      shortcuts: DEFAULT_SHORTCUTS,
+      layout: DEFAULT_LAYOUT
     }
   }
   try {
@@ -93,6 +96,7 @@ const pluginManager = new PluginManager({
 /* ==================== 窗口管理 ==================== */
 
 let mainWindow: BrowserWindow | null = null
+let terminalService: TerminalService | null = null
 
 function createMainWindow(): void {
   mainWindow = new BrowserWindow({
@@ -101,9 +105,10 @@ function createMainWindow(): void {
     minWidth: 960,
     minHeight: 600,
     show: false,
+    frame: false,
     autoHideMenuBar: true,
     title: 'Jeak Agent',
-    backgroundColor: '#1e1e1e',
+    backgroundColor: '#1e1e2e',
     webPreferences: {
       preload: join(__dirname, '../preload/mainPreload.js'),
       sandbox: true,
@@ -130,8 +135,13 @@ function createMainWindow(): void {
   })
 
   mainWindow.on('closed', () => {
+    terminalService?.dispose()
+    terminalService = null
     mainWindow = null
   })
+
+  // 创建终端服务（绑定主窗口 webContents）
+  terminalService = new TerminalService(mainWindow.webContents)
 }
 
 /* ==================== IPC：应用信息 / 设置 ==================== */
@@ -154,6 +164,9 @@ function registerSettingsIpc(): void {
     if (patch.shortcuts !== undefined) {
       store.set('shortcuts', { ...DEFAULT_SHORTCUTS, ...patch.shortcuts })
     }
+    if (patch.layout !== undefined) {
+      store.set('layout', { ...DEFAULT_LAYOUT, ...patch.layout })
+    }
     return readSettings()
   })
 }
@@ -165,7 +178,8 @@ function readSettings(): AppSettings {
   const plugins = store.get('plugins') ?? { disabled: [] }
   const onboarded = store.get('onboarded', false)
   const shortcuts = store.get('shortcuts') ?? DEFAULT_SHORTCUTS
-  return { theme, language, ai, plugins, onboarded, shortcuts }
+  const layout = store.get('layout') ?? DEFAULT_LAYOUT
+  return { theme, language, ai, plugins, onboarded, shortcuts, layout }
 }
 
 /* ==================== IPC：AI 流式对话 ==================== */
@@ -205,6 +219,8 @@ app.whenReady().then(() => {
 
   registerSettingsIpc()
   registerAiIpc()
+  registerTerminalIpc(() => terminalService)
+  registerWindowControls(() => mainWindow)
 
   createMainWindow()
 

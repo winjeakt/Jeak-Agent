@@ -68,6 +68,8 @@ export interface AppSettings {
   onboarded: boolean
   /** Phase 5：快捷键配置 */
   shortcuts: ShortcutSettings
+  /** Phase 6：界面布局 */
+  layout: LayoutSettings
 }
 
 /** 快捷键设置（可自定义） */
@@ -86,6 +88,26 @@ export const DEFAULT_SHORTCUTS: ShortcutSettings = {
   send: 'Enter',
   settings: 'Ctrl+,'
 }
+
+/** 界面布局设置（可持久化） */
+export interface LayoutSettings {
+  /** 显示文件树 */
+  showFileTree: boolean
+  /** 显示终端 */
+  showTerminal: boolean
+  /** 显示对话面板 */
+  showChat: boolean
+}
+
+/** 默认布局 */
+export const DEFAULT_LAYOUT: LayoutSettings = {
+  showFileTree: true,
+  showTerminal: false,
+  showChat: true
+}
+
+/** 终端输出类型 */
+export type TerminalOutputKind = 'stdout' | 'stderr' | 'system'
 
 /* ==================== Phase 3：插件系统（Agent Plugins 1.0） ==================== */
 

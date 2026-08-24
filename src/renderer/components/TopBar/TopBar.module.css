@@ -1,0 +1,281 @@
+/* ===== 标题栏（CodeBuddy 风格） ===== */
+
+.topBar {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  flex-shrink: 0;
+  background: var(--topbar-bg, #1e1e2e);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color, #333);
+  user-select: none;
+  -webkit-app-region: drag; /* 无边框窗口可拖拽 */
+  position: relative;
+  z-index: 200;
+}
+
+/* 只有可交互的按钮区域不可拖拽（否则无法点击），其余空白区域均可拖拽移动窗口 */
+.topBar button {
+  -webkit-app-region: no-drag;
+}
+
+/* ---- 左侧：应用标识 ---- */
+.left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 16px 0 14px;
+  cursor: default;
+  color: var(--text-primary, #ccc);
+  transition: background 0.15s;
+}
+
+.left:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  color: #9cdcfe;
+}
+
+.projectName {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--text-primary, #ccc);
+}
+
+/* ---- 中间：菜单 ---- */
+.center {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+  flex: 1;
+}
+
+.menuWrapper {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.menuButton {
+  background: transparent;
+  border: none;
+  color: var(--text-primary, #cccccc);
+  font-size: 14px;
+  padding: 0 12px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.menuButton:hover {
+  background: var(--menu-hover-bg, rgba(255, 255, 255, 0.16));
+  color: var(--menu-hover-text, #ffffff);
+}
+
+.menuButtonActive {
+  background: var(--menu-hover-bg, rgba(255, 255, 255, 0.16));
+  color: var(--menu-hover-text, #ffffff);
+}
+
+/* ---- 下拉面板（毛玻璃 + 阴影） ---- */
+.dropdown {
+  position: absolute;
+  top: 44px;
+  left: 0;
+  min-width: 220px;
+  background: var(--dropdown-bg, rgba(30, 30, 46, 0.92));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+  padding: 6px;
+  z-index: 300;
+  -webkit-app-region: no-drag; /* 下拉面板内不触发窗口拖动 */
+  animation: dropdownIn 0.12s ease-out;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdownSeparator {
+  height: 1px;
+  margin: 6px 8px;
+  background: var(--border-color, #333);
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-primary, #cccccc);
+  font-size: 13px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+
+.dropdownItem:hover {
+  background: var(--menu-hover-bg, #0e639c);
+  color: var(--menu-hover-text, #ffffff);
+}
+
+.dropdownItem:hover .dropdownShortcut {
+  color: var(--menu-hover-text, #ffffff);
+}
+
+.dropdownLabel {
+  flex: 1;
+}
+
+.dropdownShortcut {
+  color: var(--text-secondary, #888);
+  font-size: 11px;
+  margin-left: 24px;
+}
+
+/* ---- 右侧：搜索 / 设置 / 窗口控制 ---- */
+.right {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  margin-right: 4px;
+}
+
+.actionButton:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary, #ccc);
+}
+
+/* ---- 窗口控制按钮 ---- */
+.windowControls {
+  display: flex;
+  height: 100%;
+}
+
+.windowButton {
+  width: 46px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.windowButton:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary, #ccc);
+}
+
+.windowButton:nth-child(1):hover {
+  background: #e6a23c; /* 最小化 - 橙色 */
+  color: #fff;
+}
+
+.windowButton:nth-child(2):hover {
+  background: #67c23a; /* 最大化 - 绿色 */
+  color: #fff;
+}
+
+.windowClose:hover {
+  background: #e81123; /* 关闭 - 红色 */
+  color: #fff;
+}
+
+/* ---- 搜索框 ---- */
+.searchOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 500;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 60px;
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 560px;
+  max-width: 90%;
+  background: var(--dropdown-bg, rgba(30, 30, 46, 0.95));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 10px;
+  padding: 10px 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.searchInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary, #ccc);
+  font-size: 14px;
+  outline: none;
+}
+
+.searchClose {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+}
+
+.searchClose:hover {
+  color: var(--text-primary, #ccc);
+}

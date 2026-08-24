@@ -38,6 +38,13 @@ const api = {
       ipcRenderer.removeListener('app:fatal-error', listener)
     }
   },
+  /** 窗口控制（自定义标题栏） */
+  window: {
+    minimize: (): void => ipcRenderer.send('window:minimize'),
+    toggleMaximize: (): void => ipcRenderer.send('window:toggle-maximize'),
+    close: (): void => ipcRenderer.send('window:close'),
+    isMaximized: (): Promise<boolean> => ipcRenderer.invoke('window:is-maximized')
+  },
   /** 设置读写（API Key 等，主进程加密存储） */
   settings: {
     get: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
@@ -134,6 +141,26 @@ const api = {
       ipcRenderer.on('plugins:changed', listener)
       return () => {
         ipcRenderer.removeListener('plugins:changed', listener)
+      }
+    }
+  },
+  /** 终端（Phase 6） */
+  terminal: {
+    /** 启动 shell 进程 */
+    start: (): void => ipcRenderer.send('terminal:start'),
+    /** 向终端写入输入（命令） */
+    write: (input: string): void => ipcRenderer.send('terminal:write', input),
+    /** 终止终端进程 */
+    dispose: (): void => ipcRenderer.send('terminal:dispose'),
+    /** 订阅终端输出 */
+    onOutput: (callback: (payload: { kind: string; data: string }) => void): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: { kind: string; data: string }
+      ): void => callback(payload)
+      ipcRenderer.on('terminal:output', listener)
+      return () => {
+        ipcRenderer.removeListener('terminal:output', listener)
       }
     }
   }

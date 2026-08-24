@@ -2,6 +2,8 @@ node_modules/
 out/
 dist/
 *.log
+*.err
+dev-test*
 .DS_Store
 Thumbs.db
 .vite/
