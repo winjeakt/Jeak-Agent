@@ -1,45 +1,101 @@
 import { useT } from '../../stores/i18nStore'
 import { useLayoutStore } from '../../stores/layoutStore'
-import { useTerminalStore } from '../../stores/terminalStore'
+import { useTerminalStore, type TerminalSessionState } from '../../stores/terminalStore'
+import type { ShellKind } from '@shared/types'
 import type { MenuItem } from './types'
 
-/** "终端"菜单：新建 / 拆分 / 清空 / 终止 / 重启 / Shell 选择 */
+/** "终端"菜单 */
 export function useTerminalMenuItems(): MenuItem[] {
   const t = useT()
-  const start = useTerminalStore((s) => s.start)
-  const dispose = useTerminalStore((s) => s.dispose)
-  const clear = useTerminalStore((s) => s.clear)
   const setLayout = useLayoutStore((s) => s.setLayout)
 
-  const newTerminal = (): void => {
+  const activeSession = (): TerminalSessionState | undefined => {
+    const store = useTerminalStore.getState()
+    return store.sessions.find((s) => s.id === store.activeId) ?? store.sessions[0]
+  }
+
+  const openAndCreate = (shell?: ShellKind): void => {
+    const store = useTerminalStore.getState()
     setLayout({ showTerminal: true })
-    start()
+    const id = store.createSession(shell)
+    store.start(id)
   }
 
-  const restartTerminal = (): void => {
-    dispose()
-    start()
+  const renameActive = (): void => {
+    const active = activeSession()
+    if (!active) return
+    const name = window.prompt(t('menu.terminal.rename'), active.name)
+    if (name) useTerminalStore.getState().renameSession(active.id, name)
   }
 
-  const shellSubmenu: MenuItem[] = [
-    { id: 'shell-powershell', label: 'PowerShell', onClick: () => console.log('[menu] 选择 Shell: PowerShell（占位）') },
-    { id: 'shell-cmd', label: 'CMD', onClick: () => console.log('[menu] 选择 Shell: CMD（占位）') },
-    { id: 'shell-bash', label: 'Bash', onClick: () => console.log('[menu] 选择 Shell: Bash（占位）') }
-  ]
+  const killActive = (): void => {
+    const active = activeSession()
+    if (active) useTerminalStore.getState().closeSession(active.id)
+  }
+
+  const restartActive = (): void => {
+    const active = activeSession()
+    if (!active) return
+    const store = useTerminalStore.getState()
+    store.dispose(active.id)
+    store.start(active.id)
+  }
+
+  const clearActive = (): void => {
+    const active = activeSession()
+    if (active) useTerminalStore.getState().clear(active.id)
+  }
+
+  const copySelection = (): void => {
+    const text = window.getSelection()?.toString() ?? ''
+    if (text) void navigator.clipboard.writeText(text)
+  }
+
+  const paste = (): void => {
+    const active = activeSession()
+    if (!active) return
+    void navigator.clipboard.readText().then((text) => {
+      if (!text) return
+      const s = activeSession()
+      if (s) useTerminalStore.getState().setInput(s.id, s.input + text)
+    })
+  }
+
+  const showHistory = (): void => {
+    const active = activeSession()
+    if (!active) return
+    const text =
+      active.history.length === 0
+        ? t('terminal.history.empty')
+        : active.history.map((h, i) => ` ${i + 1}  ${h}`).join('\r\n')
+    useTerminalStore.getState().appendOutput(active.id, 'system', `\r\n${text}\r\n`)
+  }
+
+  const shellLabels: Record<ShellKind, string> = {
+    powershell: t('terminal.shell.powershell'),
+    cmd: t('terminal.shell.cmd'),
+    bash: t('terminal.shell.bash')
+  }
+
+  const shellSubmenu: MenuItem[] = (['powershell', 'cmd', 'bash'] as ShellKind[]).map((shell) => ({
+    id: `shell-${shell}`,
+    label: shellLabels[shell],
+    onClick: () => openAndCreate(shell)
+  }))
 
   return [
-    { id: 'new', label: t('menu.terminal.new'), shortcut: 'Ctrl+Shift+`', onClick: newTerminal },
-    { id: 'split', label: t('menu.terminal.split'), shortcut: 'Ctrl+Shift+5', onClick: () => console.log('[menu] 拆分终端（占位）') },
-    { id: 'rename', label: t('menu.terminal.rename'), onClick: () => console.log('[menu] 重命名终端（占位）') },
+    { id: 'new', label: t('menu.terminal.new'), shortcut: 'Ctrl+Shift+`', onClick: () => openAndCreate() },
+    { id: 'split', label: t('menu.terminal.split'), shortcut: 'Ctrl+Shift+5', onClick: () => openAndCreate() },
+    { id: 'rename', label: t('menu.terminal.rename'), onClick: renameActive },
     { id: 'sep-1', label: '', separator: true },
-    { id: 'clear', label: t('menu.terminal.clear'), shortcut: 'Ctrl+K', onClick: clear },
-    { id: 'kill', label: t('menu.terminal.kill'), onClick: dispose },
-    { id: 'restart', label: t('menu.terminal.restart'), onClick: restartTerminal },
+    { id: 'clear', label: t('menu.terminal.clear'), shortcut: 'Ctrl+K', onClick: clearActive },
+    { id: 'kill', label: t('menu.terminal.kill'), onClick: killActive },
+    { id: 'restart', label: t('menu.terminal.restart'), onClick: restartActive },
     { id: 'sep-2', label: '', separator: true },
-    { id: 'copy-selection', label: t('menu.terminal.copySelection'), shortcut: 'Ctrl+Shift+C', onClick: () => console.log('[menu] 复制选择（占位）') },
-    { id: 'paste', label: t('menu.terminal.paste'), shortcut: 'Ctrl+Shift+V', onClick: () => console.log('[menu] 粘贴（占位）') },
+    { id: 'copy-selection', label: t('menu.terminal.copySelection'), shortcut: 'Ctrl+Shift+C', onClick: copySelection },
+    { id: 'paste', label: t('menu.terminal.paste'), shortcut: 'Ctrl+Shift+V', onClick: paste },
     { id: 'sep-3', label: '', separator: true },
     { id: 'settings', label: t('menu.terminal.settings'), submenu: shellSubmenu },
-    { id: 'history', label: t('menu.terminal.history'), onClick: () => console.log('[menu] 终端历史（占位）') }
+    { id: 'history', label: t('menu.terminal.history'), onClick: showHistory }
   ]
 }

@@ -1,6 +1,6 @@
-import { BrowserWindow, ipcMain, shell } from 'electron'
+import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { basename, dirname, join, resolve } from 'path'
-import { existsSync, rmSync } from 'fs'
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'fs'
 import type Store from 'electron-store'
 import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron'
 import type { AppSettings, EditorStateSnapshot, PluginInfo, ProjectInfo } from '../../shared/types'
@@ -113,6 +113,81 @@ export class PluginManager {
     this.infos.delete(name)
 
     this.broadcast()
+    return this.list()
+  }
+
+  /** 从本地目录安装插件：弹出目录选择对话框，复制到插件根目录并刷新 */
+  async installLocal(): Promise<PluginInfo[]> {
+    const pluginsRoot = resolve(this.pluginsRoot || discoverPluginDirectories().pluginsRoot)
+    const win = this.deps.getMainWindow()
+    const options: Electron.OpenDialogOptions = { title: '选择插件目录', properties: ['openDirectory'] }
+    const result = win
+      ? await dialog.showOpenDialog(win, options)
+      : await dialog.showOpenDialog(options)
+    if (result.canceled || result.filePaths.length === 0) return this.list()
+
+    const sourceDir = result.filePaths[0]
+    const targetDir = join(pluginsRoot, basename(sourceDir))
+    if (resolve(sourceDir) === resolve(targetDir)) {
+      throw new Error('该插件已在插件目录中')
+    }
+    if (!existsSync(join(sourceDir, 'plugin.json'))) {
+      throw new Error('所选目录缺少 plugin.json，不是有效的插件')
+    }
+
+    mkdirSync(pluginsRoot, { recursive: true })
+    cpSync(sourceDir, targetDir, { recursive: true })
+    await this.refresh()
+    return this.list()
+  }
+
+  /** 创建新插件模板（plugin.json + index.js） */
+  async create(name: string): Promise<PluginInfo[]> {
+    const pluginsRoot = resolve(this.pluginsRoot || discoverPluginDirectories().pluginsRoot)
+    const safeName = String(name)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+    if (!safeName) throw new Error('插件名不能为空')
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(safeName)) {
+      throw new Error('插件名只能包含小写字母、数字和连字符')
+    }
+
+    const targetDir = join(pluginsRoot, safeName)
+    if (existsSync(targetDir)) throw new Error(`插件目录已存在: ${safeName}`)
+
+    mkdirSync(targetDir, { recursive: true })
+    writeFileSync(
+      join(targetDir, 'plugin.json'),
+      JSON.stringify(
+        {
+          name: safeName,
+          version: '0.1.0',
+          description: '我的新插件',
+          author: '',
+          license: 'MIT',
+          permissions: [],
+          entry: 'index.js'
+        },
+        null,
+        2
+      ) + '\n',
+      'utf-8'
+    )
+    writeFileSync(
+      join(targetDir, 'index.js'),
+      [
+        '// 插件入口文件',
+        '// 通过全局 jeak API 与 Jeak Agent 交互（如 jeak.ai.chat、jeak.fs.read 等）',
+        '// 完整 API 文档：https://github.com/winjeakt/Jeak-Agent',
+        '',
+        "console.log('插件已加载')",
+        ''
+      ].join('\n'),
+      'utf-8'
+    )
+    await this.refresh()
     return this.list()
   }
 
@@ -320,6 +395,12 @@ export class PluginManager {
     })
     ipcMain.handle('plugins:uninstall', async (_e, name: string) => {
       return this.uninstall(String(name))
+    })
+    ipcMain.handle('plugins:install-local', async () => {
+      return this.installLocal()
+    })
+    ipcMain.handle('plugins:create', async (_e, name: string) => {
+      return this.create(String(name))
     })
 
     // 编辑器状态镜像：主窗口渲染进程实时同步（供插件 editor API 读取）

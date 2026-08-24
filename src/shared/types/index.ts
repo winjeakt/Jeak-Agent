@@ -323,3 +323,35 @@ export interface CheckUpdateResult {
   /** 是否为开发模式（未打包） */
   dev?: boolean
 }
+
+/* ==================== 工作区 & 文件树 ==================== */
+
+/** 文件树节点 */
+export interface FileTreeNode {
+  /** 文件/目录名 */
+  name: string
+  /** 绝对路径 */
+  path: string
+  /** 节点类型 */
+  type: 'file' | 'directory'
+  /** 子节点（仅目录，懒加载时可为空） */
+  children?: FileTreeNode[]
+}
+
+/** 按路径打开的结果（文件 or 文件夹，供"最近打开"菜单直接打开） */
+export interface WorkspaceOpenResult {
+  canceled: boolean
+  /** 路径类型 */
+  kind: 'file' | 'directory'
+  /** 绝对路径 */
+  path?: string
+  /** 文件内容（kind === 'file' 时有效） */
+  content?: string
+  /** 语言（kind === 'file' 时有效） */
+  language?: EditorLanguage
+  /** 目录树（kind === 'directory' 时有效） */
+  tree?: FileTreeNode[]
+}
+
+/** 终端 shell 类型 */
+export type ShellKind = 'powershell' | 'cmd' | 'bash'

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useEditorStore } from '../../stores/editorStore'
+import { useWorkspaceStore } from '../../stores/workspaceStore'
 import { useT } from '../../stores/i18nStore'
 import type { MenuItem } from './types'
 
@@ -35,7 +36,7 @@ export function useFileMenuItems(): MenuItem[] {
   const handleOpenFolder = async (): Promise<void> => {
     const result = await window.jeak.file.openFolder()
     if (result.canceled || !result.path) return
-    console.log('[menu] 打开文件夹:', result.path)
+    await useWorkspaceStore.getState().loadTree(result.path)
     await refreshRecent()
   }
 
@@ -56,6 +57,15 @@ export function useFileMenuItems(): MenuItem[] {
     await refreshRecent()
   }
 
+  /** 保存全部：单文件模型下等同于保存当前文件（未保存过则另存为） */
+  const handleSaveAll = async (): Promise<void> => {
+    if (!currentFile) {
+      await handleSaveAs()
+    } else {
+      await handleSave()
+    }
+  }
+
   const toggleAutoSave = async (): Promise<void> => {
     const next = !autoSave
     setAutoSave(next)
@@ -66,12 +76,24 @@ export function useFileMenuItems(): MenuItem[] {
     setRecentProjects(await window.jeak.recent.clear())
   }
 
+  /** 打开最近项目：自动判断是文件还是文件夹 */
+  const handleOpenRecent = async (path: string): Promise<void> => {
+    const result = await window.jeak.workspace.openPath(path)
+    if (result.canceled || !result.path) return
+    if (result.kind === 'file') {
+      openFile(result.path, result.content ?? '', result.language ?? 'plaintext')
+    } else {
+      await useWorkspaceStore.getState().loadTree(result.path)
+    }
+    await refreshRecent()
+  }
+
   const recentSubmenu: MenuItem[] = [
     ...(recentProjects.length > 0
       ? recentProjects.map((path, i) => ({
           id: `recent-${i}`,
           label: path,
-          onClick: () => console.log('[menu] 打开最近项目:', path)
+          onClick: () => void handleOpenRecent(path)
         }))
       : [{ id: 'recent-empty', label: t('menu.file.recentEmpty'), disabled: true }]),
     { id: 'recent-sep', label: '', separator: true },
@@ -85,7 +107,7 @@ export function useFileMenuItems(): MenuItem[] {
     { id: 'sep-1', label: '', separator: true },
     { id: 'save', label: t('menu.file.save'), shortcut: 'Ctrl+S', onClick: () => void handleSave() },
     { id: 'save-as', label: t('menu.file.saveAs'), shortcut: 'Ctrl+Shift+S', onClick: () => void handleSaveAs() },
-    { id: 'save-all', label: t('menu.file.saveAll'), shortcut: 'Ctrl+Alt+S', onClick: () => console.log('[menu] 全部保存（占位）') },
+    { id: 'save-all', label: t('menu.file.saveAll'), shortcut: 'Ctrl+Alt+S', onClick: () => void handleSaveAll() },
     { id: 'sep-2', label: '', separator: true },
     { id: 'auto-save', label: t('menu.file.autoSave'), checked: autoSave, onClick: () => void toggleAutoSave() },
     { id: 'sep-3', label: '', separator: true },

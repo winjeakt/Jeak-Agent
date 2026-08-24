@@ -9,12 +9,10 @@ const SEVERITY_ICON: Record<Diagnostic['severity'], string> = {
 }
 
 /** 底部问题面板：展示插件（如 ESLint）报告的问题列表 */
-export default function DiagnosticsPanel(): JSX.Element | null {
+export default function DiagnosticsPanel(): JSX.Element {
   const t = useT()
   const diagnostics = useDiagnosticsStore((s) => s.diagnostics)
   const clear = useDiagnosticsStore((s) => s.clear)
-
-  if (diagnostics.length === 0) return null
 
   const errors = diagnostics.filter((d) => d.severity === 'error').length
   const warnings = diagnostics.filter((d) => d.severity === 'warning').length
@@ -30,19 +28,23 @@ export default function DiagnosticsPanel(): JSX.Element | null {
           ✕
         </button>
       </div>
-      <ul className="diagnostics__list">
-        {diagnostics.map((d, i) => (
-          <li key={i} className={`diagnostics__item diagnostics__item--${d.severity}`}>
-            <span className="diagnostics__icon">{SEVERITY_ICON[d.severity]}</span>
-            <span className="diagnostics__msg">{d.message}</span>
-            <span className="diagnostics__loc">
-              {d.filePath ? `${d.filePath.split(/[\\/]/).pop()}:` : ''}
-              {d.line}:{d.column}
-            </span>
-            {d.ruleId && <span className="diagnostics__rule">{d.ruleId}</span>}
-          </li>
-        ))}
-      </ul>
+      {diagnostics.length === 0 ? (
+        <div className="diagnostics__empty">✓ {t('diagnostics.empty')}</div>
+      ) : (
+        <ul className="diagnostics__list">
+          {diagnostics.map((d, i) => (
+            <li key={i} className={`diagnostics__item diagnostics__item--${d.severity}`}>
+              <span className="diagnostics__icon">{SEVERITY_ICON[d.severity]}</span>
+              <span className="diagnostics__msg">{d.message}</span>
+              <span className="diagnostics__loc">
+                {d.filePath ? `${d.filePath.split(/[\\/]/).pop()}:` : ''}
+                {d.line}:{d.column}
+              </span>
+              {d.ruleId && <span className="diagnostics__rule">{d.ruleId}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

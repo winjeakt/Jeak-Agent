@@ -9,9 +9,12 @@ import type {
   EditorStateSnapshot,
   FileOpenResult,
   FileSaveResult,
+  FileTreeNode,
   FolderOpenResult,
   PluginInfo,
-  UpdateState
+  ShellKind,
+  UpdateState,
+  WorkspaceOpenResult
 } from '../shared/types'
 
 // 通过 contextBridge 向渲染进程暴露受限 API。
@@ -143,6 +146,10 @@ const api = {
     /** 卸载插件（删除插件目录） */
     uninstall: (name: string): Promise<PluginInfo[]> =>
       ipcRenderer.invoke('plugins:uninstall', name),
+    /** 从本地目录安装插件（弹出目录选择对话框） */
+    installLocal: (): Promise<PluginInfo[]> => ipcRenderer.invoke('plugins:install-local'),
+    /** 创建新插件模板 */
+    create: (name: string): Promise<PluginInfo[]> => ipcRenderer.invoke('plugins:create', name),
     /** 订阅插件列表 / 状态变化 */
     onChanged: (callback: (plugins: PluginInfo[]) => void): (() => void) => {
       const listener = (_event: Electron.IpcRendererEvent, plugins: PluginInfo[]): void =>
@@ -153,19 +160,23 @@ const api = {
       }
     }
   },
-  /** 终端（Phase 6） */
+  /** 终端（Phase 6，多会话） */
   terminal: {
-    /** 启动 shell 进程 */
-    start: (): void => ipcRenderer.send('terminal:start'),
-    /** 向终端写入输入（命令） */
-    write: (input: string): void => ipcRenderer.send('terminal:write', input),
-    /** 终止终端进程 */
-    dispose: (): void => ipcRenderer.send('terminal:dispose'),
+    /** 启动 shell 会话（sessionId 由渲染层生成） */
+    start: (sessionId: string, shell?: ShellKind): void =>
+      ipcRenderer.send('terminal:start', sessionId, shell),
+    /** 向指定会话写入输入（命令） */
+    write: (sessionId: string, input: string): void =>
+      ipcRenderer.send('terminal:write', sessionId, input),
+    /** 终止指定会话 */
+    dispose: (sessionId: string): void => ipcRenderer.send('terminal:dispose', sessionId),
     /** 订阅终端输出 */
-    onOutput: (callback: (payload: { kind: string; data: string }) => void): (() => void) => {
+    onOutput: (
+      callback: (payload: { sessionId: string; kind: string; data: string }) => void
+    ): (() => void) => {
       const listener = (
         _event: Electron.IpcRendererEvent,
-        payload: { kind: string; data: string }
+        payload: { sessionId: string; kind: string; data: string }
       ): void => callback(payload)
       ipcRenderer.on('terminal:output', listener)
       return () => {
@@ -187,6 +198,11 @@ const api = {
     list: (): Promise<string[]> => ipcRenderer.invoke('recent:list'),
     add: (path: string): Promise<string[]> => ipcRenderer.invoke('recent:add', path),
     clear: (): Promise<string[]> => ipcRenderer.invoke('recent:clear')
+  },
+  /** 工作区（文件树 / 按路径打开） */
+  workspace: {
+    readTree: (path: string): Promise<FileTreeNode[]> => ipcRenderer.invoke('workspace:read-tree', path),
+    openPath: (path: string): Promise<WorkspaceOpenResult> => ipcRenderer.invoke('workspace:open-path', path)
   },
   /** shell（外部链接 / 日志文件夹，菜单栏"帮助"菜单） */
   shell: {

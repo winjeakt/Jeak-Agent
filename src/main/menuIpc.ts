@@ -1,7 +1,14 @@
 import { app, dialog, ipcMain, shell, type BrowserWindow } from 'electron'
-import { readFileSync, writeFileSync, mkdirSync } from 'fs'
-import { extname } from 'path'
-import type { EditorLanguage, FileOpenResult, FileSaveResult, FolderOpenResult } from '../shared/types'
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from 'fs'
+import { extname, join } from 'path'
+import type {
+  EditorLanguage,
+  FileOpenResult,
+  FileSaveResult,
+  FolderOpenResult,
+  FileTreeNode,
+  WorkspaceOpenResult
+} from '../shared/types'
 
 /** 最近打开项目的最大保留条数 */
 const MAX_RECENT = 10
@@ -35,6 +42,53 @@ function inferLanguage(path: string): EditorLanguage {
     default:
       return 'plaintext'
   }
+}
+
+/** 目录树读取的忽略目录与限制 */
+const TREE_IGNORE_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'out',
+  'build',
+  '.cache',
+  '__pycache__',
+  '.idea',
+  '.vscode',
+  'coverage'
+])
+const TREE_MAX_DEPTH = 6
+const TREE_MAX_ITEMS = 300
+
+/** 递归读取目录树（限制深度与数量，避免大目录卡顿） */
+function readTree(dir: string, depth = 0): FileTreeNode[] {
+  if (depth > TREE_MAX_DEPTH) return []
+  let entries: string[]
+  try {
+    entries = readdirSync(dir)
+  } catch {
+    return []
+  }
+  const nodes: FileTreeNode[] = []
+  for (const name of entries) {
+    if (nodes.length >= TREE_MAX_ITEMS) break
+    if (name.startsWith('.')) continue
+    if (TREE_IGNORE_DIRS.has(name)) continue
+    const fullPath = join(dir, name)
+    let stat
+    try {
+      stat = statSync(fullPath)
+    } catch {
+      continue
+    }
+    if (stat.isDirectory()) {
+      nodes.push({ name, path: fullPath, type: 'directory', children: readTree(fullPath, depth + 1) })
+    } else if (stat.isFile()) {
+      nodes.push({ name, path: fullPath, type: 'file' })
+    }
+  }
+  nodes.sort((a, b) => (a.type !== b.type ? (a.type === 'directory' ? -1 : 1) : a.name.localeCompare(b.name)))
+  return nodes
 }
 
 interface MenuIpcOptions {
@@ -148,6 +202,29 @@ export function registerMenuIpc(opts: MenuIpcOptions): void {
   ipcMain.handle('recent:clear', (): string[] => {
     setRecentProjects([])
     return []
+  })
+
+  /* ---------------- 工作区（文件树 / 按路径打开） ---------------- */
+
+  ipcMain.handle('workspace:read-tree', (_event, path: string): FileTreeNode[] => {
+    if (typeof path !== 'string' || !path) return []
+    return readTree(path)
+  })
+
+  ipcMain.handle('workspace:open-path', (_event, path: string): WorkspaceOpenResult => {
+    if (typeof path !== 'string' || !path) return { canceled: true, kind: 'file' }
+    try {
+      const stat = statSync(path)
+      if (stat.isDirectory()) {
+        addRecent(path)
+        return { canceled: false, kind: 'directory', path, tree: readTree(path) }
+      }
+      const content = readFileSync(path, 'utf-8')
+      addRecent(path)
+      return { canceled: false, kind: 'file', path, content, language: inferLanguage(path) }
+    } catch {
+      return { canceled: true, kind: 'file' }
+    }
   })
 
   /* ---------------- 窗口（缩放 / 全屏） ---------------- */

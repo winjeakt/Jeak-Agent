@@ -1178,3 +1178,279 @@ body {
   outline: none;
   padding: 0;
 }
+
+/* ===== 终端多会话 tab ===== */
+.terminal__tabs {
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 11px;
+  background: var(--bg-sidebar);
+  overflow-x: auto;
+}
+
+.terminal__tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  border-right: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.terminal__tab:hover {
+  color: var(--text-primary);
+}
+
+.terminal__tab--active {
+  background: var(--input-bg);
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 0 var(--accent);
+}
+
+.terminal__tab-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.terminal__tab-close {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.terminal__tab-close:hover {
+  color: #f14c4c;
+}
+
+.terminal__add {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 10px;
+}
+
+.terminal__add:hover {
+  color: var(--text-primary);
+}
+
+.terminal__empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* ===== 文件树 ===== */
+.panel__action {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.panel__action:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.filetree {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 8px;
+}
+
+.filetree__root {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 4px;
+}
+
+.filetree__loading {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.filetree__open-btn {
+  background: var(--accent);
+  border: none;
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.filetree__open-btn:hover {
+  opacity: 0.9;
+}
+
+.tree-node__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding-right: 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  user-select: none;
+}
+
+.tree-node__row:hover {
+  background: var(--hover-bg);
+}
+
+.tree-node__chevron {
+  width: 12px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.tree-node__icon {
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.tree-node__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== 编辑器分栏 ===== */
+.editor-area {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 1px;
+  background: var(--border-color);
+}
+
+.editor-area__pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  background: var(--bg-editor);
+}
+
+.editor-area__pane--empty {
+  align-items: center;
+  justify-content: center;
+}
+
+.editor-area__empty {
+  color: var(--text-secondary);
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+/* ===== 底部输出面板 ===== */
+.output-panel {
+  height: 180px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-editor);
+}
+
+.output-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.output-panel__title {
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 11px;
+}
+
+.output-panel__clear {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.output-panel__clear:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.output-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 12px;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.output-panel__empty {
+  color: var(--text-secondary);
+}
+
+.output-panel__line {
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-primary);
+}
+
+.output-panel__time {
+  color: var(--text-secondary);
+  margin-right: 8px;
+}
+
+.output-panel__line--error {
+  color: #f14c4c;
+}
+
+.output-panel__line--ai {
+  color: var(--accent);
+}
+
+.output-panel__line--system {
+  color: var(--text-secondary);
+}
+
+/* ===== 问题面板空状态 ===== */
+.diagnostics__empty {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}

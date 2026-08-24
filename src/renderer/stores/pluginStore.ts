@@ -13,6 +13,10 @@ interface PluginState {
   runCommand: (command: string) => Promise<void>
   /** 卸载插件 */
   uninstall: (name: string) => Promise<void>
+  /** 从本地目录安装插件 */
+  installLocal: () => Promise<void>
+  /** 创建新插件模板 */
+  create: (name: string) => Promise<void>
   /** 打开插件目录 */
   openDir: () => Promise<void>
   /** 应用主进程推送的新列表 */
@@ -57,6 +61,26 @@ export const usePluginStore = create<PluginState>((set) => ({
       set({ plugins })
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) })
+    }
+  },
+
+  installLocal: async () => {
+    try {
+      const plugins = await window.jeak.plugins.installLocal()
+      set({ plugins })
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) })
+      throw error
+    }
+  },
+
+  create: async (name) => {
+    try {
+      const plugins = await window.jeak.plugins.create(name)
+      set({ plugins })
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) })
+      throw error
     }
   },
 

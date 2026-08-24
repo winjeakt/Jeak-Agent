@@ -1,7 +1,7 @@
 import { useT } from '../../stores/i18nStore'
 import { useLayoutStore } from '../../stores/layoutStore'
 import { useThemeStore } from '../../stores/themeStore'
-import { useUIStore } from '../../stores/uiStore'
+import { useUIStore, type EditorLayout } from '../../stores/uiStore'
 import type { MenuItem } from './types'
 
 /** "视图"菜单：面板显隐 / 主题 / 缩放 / 全屏 / 编辑器组 */
@@ -13,6 +13,9 @@ export function useViewMenuItems(): MenuItem[] {
   const setTheme = useThemeStore((s) => s.setTheme)
   const openSettings = useUIStore((s) => s.openSettings)
   const toggleSearch = useUIStore((s) => s.toggleSearch)
+  const toggleBottomPanel = useUIStore((s) => s.toggleBottomPanel)
+  const editorLayout = useUIStore((s) => s.editorLayout)
+  const setEditorLayout = useUIStore((s) => s.setEditorLayout)
 
   const themeSubmenu: MenuItem[] = [
     { id: 'theme-dark', label: t('menu.view.themeDark'), checked: theme === 'dark', onClick: () => setTheme('dark') },
@@ -20,11 +23,17 @@ export function useViewMenuItems(): MenuItem[] {
     { id: 'theme-system', label: t('menu.view.themeSystem'), checked: theme === 'system', onClick: () => setTheme('system') }
   ]
 
-  const editorGroupSubmenu: MenuItem[] = [1, 2, 3].map((n) => ({
+  const editorGroupLabels: Record<EditorLayout, string> = {
+    1: t('menu.view.editorGroup.single'),
+    2: t('menu.view.editorGroup.two'),
+    3: t('menu.view.editorGroup.three')
+  }
+
+  const editorGroupSubmenu: MenuItem[] = ([1, 2, 3] as const).map((n) => ({
     id: `group-${n}`,
-    label: `${t('menu.view.editorGroup')} ${n}`,
-    shortcut: `Ctrl+${n}`,
-    onClick: () => console.log(`[menu] 切换到编辑器组 ${n}（占位）`)
+    label: editorGroupLabels[n],
+    checked: editorLayout === n,
+    onClick: () => setEditorLayout(n)
   }))
 
   return [
@@ -34,8 +43,8 @@ export function useViewMenuItems(): MenuItem[] {
     { id: 'search-panel', label: t('menu.view.searchPanel'), shortcut: 'Ctrl+Shift+F', onClick: toggleSearch },
     { id: 'plugins-panel', label: t('menu.view.pluginsPanel'), shortcut: 'Ctrl+Shift+X', onClick: () => openSettings('plugins') },
     { id: 'toggle-terminal', label: t('menu.view.toggleTerminal'), shortcut: 'Ctrl+`', onClick: () => toggle('showTerminal') },
-    { id: 'debug-panel', label: t('menu.view.debugPanel'), shortcut: 'Ctrl+Shift+D', onClick: () => console.log('[menu] 调试面板（占位）') },
-    { id: 'output-panel', label: t('menu.view.outputPanel'), shortcut: 'Ctrl+Shift+U', onClick: () => console.log('[menu] 输出面板（占位）') },
+    { id: 'debug-panel', label: t('menu.view.debugPanel'), shortcut: 'Ctrl+Shift+D', onClick: () => toggleBottomPanel('diagnostics') },
+    { id: 'output-panel', label: t('menu.view.outputPanel'), shortcut: 'Ctrl+Shift+U', onClick: () => toggleBottomPanel('output') },
     { id: 'sep-2', label: '', separator: true },
     { id: 'theme', label: t('menu.view.theme'), submenu: themeSubmenu },
     { id: 'sep-3', label: '', separator: true },

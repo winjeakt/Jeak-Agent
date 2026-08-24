@@ -64,10 +64,13 @@ export const messages = {
     'plugins.run': '▶ {title}',
     'diagnostics.title': '问题',
     'diagnostics.clear': '清空',
+    'diagnostics.empty': '暂无问题',
     'terminal.title': '终端',
     'terminal.starting': '正在启动终端…',
     'terminal.placeholder': '输入命令，Enter 执行',
     'terminal.clear': '清空',
+    'terminal.close': '关闭终端',
+    'terminal.empty': '暂无终端会话',
     'layout.fileTree': '文件树',
     'layout.terminal': '终端',
     'layout.chat': '对话面板',
@@ -147,6 +150,7 @@ export const messages = {
     'menu.plugins.checkUpdate': '检查更新',
     'menu.plugins.settings': '插件设置',
     'menu.plugins.create': '创建新插件',
+    'menu.plugins.noMarket': '插件市场尚未上线，请使用"从本地安装"或手动复制插件目录',
     'menu.plugins.docs': '插件开发文档',
     'menu.plugins.enabled': '已启用',
     'menu.plugins.disabled': '已禁用',
@@ -168,7 +172,39 @@ export const messages = {
     'error.fatal.hint': '以下错误信息可能有助于排查问题：',
     'error.fatal.close': '关闭',
     'error.unknown': '发生未知错误',
-    'error.reload': '重新加载'
+    'error.reload': '重新加载',
+
+    // ===== 文件树 =====
+    'filetree.empty': '打开文件夹以浏览文件',
+    'filetree.loading': '加载中…',
+    'filetree.emptyDir': '此文件夹为空',
+
+    // ===== 视图 / 输出面板 =====
+    'panel.output': '输出',
+    'output.empty': '暂无输出',
+    'output.clear': '清空输出',
+
+    // ===== 编辑器分组 =====
+    'menu.view.editorGroup.single': '单编辑器',
+    'menu.view.editorGroup.two': '双编辑器（左右）',
+    'menu.view.editorGroup.three': '三编辑器（网格）',
+
+    // ===== 终端 =====
+    'terminal.shell.powershell': 'PowerShell',
+    'terminal.shell.cmd': '命令提示符 (CMD)',
+    'terminal.shell.bash': 'Bash',
+    'terminal.copySelection.done': '已复制选中内容',
+    'terminal.history.empty': '暂无命令历史',
+
+    // ===== 插件 =====
+    'plugins.installLocal.title': '从本地安装插件',
+    'plugins.checkUpdate.uptodate': '所有插件均为最新版本',
+    'plugins.checkUpdate.found': '发现 {count} 个可更新插件',
+    'plugins.create.success': '已创建插件：{path}',
+    'plugins.create.fail': '创建插件失败：{error}',
+    'plugins.market.empty': '暂无可用插件',
+    'plugins.market.install': '安装',
+    'plugins.market.installed': '已安装'
   },
   en: {
     'app.title': 'Jeak Agent',
@@ -229,10 +265,13 @@ export const messages = {
     'plugins.run': '▶ {title}',
     'diagnostics.title': 'Problems',
     'diagnostics.clear': 'Clear',
+    'diagnostics.empty': 'No problems detected',
     'terminal.title': 'Terminal',
     'terminal.starting': 'Starting terminal…',
     'terminal.placeholder': 'Type a command, Enter to run',
     'terminal.clear': 'Clear',
+    'terminal.close': 'Close Terminal',
+    'terminal.empty': 'No terminal sessions',
     'layout.fileTree': 'File Tree',
     'layout.terminal': 'Terminal',
     'layout.chat': 'Chat Panel',
@@ -312,6 +351,7 @@ export const messages = {
     'menu.plugins.checkUpdate': 'Check for Updates',
     'menu.plugins.settings': 'Plugin Settings',
     'menu.plugins.create': 'Create New Plugin',
+    'menu.plugins.noMarket': 'Plugin marketplace is not available yet. Use "Install from Local" instead.',
     'menu.plugins.docs': 'Plugin Development Docs',
     'menu.plugins.enabled': 'Enabled',
     'menu.plugins.disabled': 'Disabled',
@@ -333,7 +373,39 @@ export const messages = {
     'error.fatal.hint': 'The following error may help diagnose the problem:',
     'error.fatal.close': 'Close',
     'error.unknown': 'An unknown error occurred',
-    'error.reload': 'Reload'
+    'error.reload': 'Reload',
+
+    // ===== File tree =====
+    'filetree.empty': 'Open a folder to browse files',
+    'filetree.loading': 'Loading…',
+    'filetree.emptyDir': 'This folder is empty',
+
+    // ===== View / Output panel =====
+    'panel.output': 'Output',
+    'output.empty': 'No output yet',
+    'output.clear': 'Clear Output',
+
+    // ===== Editor group =====
+    'menu.view.editorGroup.single': 'Single Editor',
+    'menu.view.editorGroup.two': 'Two Editors (side by side)',
+    'menu.view.editorGroup.three': 'Three Editors (grid)',
+
+    // ===== Terminal =====
+    'terminal.shell.powershell': 'PowerShell',
+    'terminal.shell.cmd': 'Command Prompt (CMD)',
+    'terminal.shell.bash': 'Bash',
+    'terminal.copySelection.done': 'Selection copied',
+    'terminal.history.empty': 'No command history',
+
+    // ===== Plugins =====
+    'plugins.installLocal.title': 'Install Plugin from Local',
+    'plugins.checkUpdate.uptodate': 'All plugins are up to date',
+    'plugins.checkUpdate.found': '{count} plugin(s) can be updated',
+    'plugins.create.success': 'Plugin created: {path}',
+    'plugins.create.fail': 'Failed to create plugin: {error}',
+    'plugins.market.empty': 'No plugins available',
+    'plugins.market.install': 'Install',
+    'plugins.market.installed': 'Installed'
   }
 } as const
 
