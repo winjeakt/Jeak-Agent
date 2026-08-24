@@ -1,0 +1,18 @@
+{
+  "$schema": "https://jeak.dev/schemas/plugin-1.0.json",
+  "name": "code-formatter",
+  "version": "1.1.0",
+  "description": "调用 Prettier 格式化编辑器中的选中代码，支持 JSON / JS / TS / HTML / CSS / Markdown 等。",
+  "author": "jeak",
+  "license": "MIT",
+  "entry": "main.js",
+  "permissions": ["editor:get", "editor:apply", "fs:read", "fs:write", "lint:run"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "code-formatter.format",
+        "title": "格式化选中代码"
+      }
+    ]
+  }
+}
