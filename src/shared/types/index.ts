@@ -14,6 +14,9 @@ export type EditorLanguage =
 /** 应用主题 */
 export type Theme = 'dark' | 'light'
 
+/** 界面语言 */
+export type AppLanguage = 'zh' | 'en'
+
 /** 应用信息（主进程返回） */
 export interface AppInfo {
   version: string
@@ -56,9 +59,32 @@ export interface AISettings {
 /** 应用设置（electron-store 持久化） */
 export interface AppSettings {
   theme: Theme
+  /** 界面语言 */
+  language: AppLanguage
   ai: AISettings
   /** Phase 3：插件启用状态（disabled 列表） */
   plugins: { disabled: string[] }
+  /** Phase 5：是否已完成首次引导 */
+  onboarded: boolean
+  /** Phase 5：快捷键配置 */
+  shortcuts: ShortcutSettings
+}
+
+/** 快捷键设置（可自定义） */
+export interface ShortcutSettings {
+  /** AI 解释选中代码 */
+  explain: string
+  /** 发送对话消息 */
+  send: string
+  /** 打开设置 */
+  settings: string
+}
+
+/** 默认快捷键 */
+export const DEFAULT_SHORTCUTS: ShortcutSettings = {
+  explain: 'Ctrl+E',
+  send: 'Enter',
+  settings: 'Ctrl+,'
 }
 
 /* ==================== Phase 3：插件系统（Agent Plugins 1.0） ==================== */

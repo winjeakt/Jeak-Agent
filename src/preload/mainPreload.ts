@@ -12,8 +12,13 @@ import type {
 // 通过 contextBridge 向渲染进程暴露受限 API。
 // 安全模型：sandbox + contextIsolation，仅暴露白名单通道。
 const api = {
-  getAppInfo: (): Promise<{ version: string; platform: string; theme: string }> =>
-    ipcRenderer.invoke('app:get-info'),
+  getAppInfo: (): Promise<{
+    version: string
+    platform: string
+    theme: string
+    language: string
+    onboarded: boolean
+  }> => ipcRenderer.invoke('app:get-info'),
   onThemeChange: (callback: (theme: string) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, theme: string): void => {
       callback(theme)
@@ -21,6 +26,16 @@ const api = {
     ipcRenderer.on('app:theme-changed', listener)
     return () => {
       ipcRenderer.removeListener('app:theme-changed', listener)
+    }
+  },
+  /** 订阅主进程致命错误（全局错误处理） */
+  onFatalError: (callback: (message: string) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, message: string): void => {
+      callback(message)
+    }
+    ipcRenderer.on('app:fatal-error', listener)
+    return () => {
+      ipcRenderer.removeListener('app:fatal-error', listener)
     }
   },
   /** 设置读写（API Key 等，主进程加密存储） */

@@ -1,5 +1,6 @@
 import type { Diagnostic } from '@shared/types'
 import { useDiagnosticsStore } from '../../stores/diagnosticsStore'
+import { useT } from '../../stores/i18nStore'
 
 const SEVERITY_ICON: Record<Diagnostic['severity'], string> = {
   error: '✖',
@@ -9,6 +10,7 @@ const SEVERITY_ICON: Record<Diagnostic['severity'], string> = {
 
 /** 底部问题面板：展示插件（如 ESLint）报告的问题列表 */
 export default function DiagnosticsPanel(): JSX.Element | null {
+  const t = useT()
   const diagnostics = useDiagnosticsStore((s) => s.diagnostics)
   const clear = useDiagnosticsStore((s) => s.clear)
 
@@ -21,10 +23,10 @@ export default function DiagnosticsPanel(): JSX.Element | null {
     <div className="diagnostics">
       <div className="diagnostics__header">
         <span className="diagnostics__title">
-          问题 {errors > 0 && <span className="diagnostics__err">✖ {errors}</span>}{' '}
+          {t('diagnostics.title')} {errors > 0 && <span className="diagnostics__err">✖ {errors}</span>}{' '}
           {warnings > 0 && <span className="diagnostics__warn">⚠ {warnings}</span>}
         </span>
-        <button className="diagnostics__close" onClick={clear} title="清空">
+        <button className="diagnostics__close" onClick={clear} title={t('diagnostics.clear')}>
           ✕
         </button>
       </div>

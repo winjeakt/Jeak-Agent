@@ -3,9 +3,36 @@ import { join } from 'path'
 import { rmSync } from 'fs'
 import { hostname } from 'os'
 import Store from 'electron-store'
-import type { AIChatModel, AIChatRequest, AppSettings, Theme } from '../shared/types'
+import type {
+  AIChatModel,
+  AIChatRequest,
+  AppLanguage,
+  AppSettings,
+  Theme
+} from '../shared/types'
+import { DEFAULT_SHORTCUTS } from '../shared/types'
 import { AIService } from './services/AIService'
 import { PluginManager } from '../plugins/runtime/manager'
+
+/* ==================== 全局错误处理 ==================== */
+
+process.on('uncaughtException', (error) => {
+  console.error('[main] 未捕获异常:', error)
+  // 尝试通知渲染进程展示错误（若窗口存在）
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('app:fatal-error', error?.message ?? String(error))
+  }
+})
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[main] 未处理的 Promise 拒绝:', reason)
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(
+      'app:fatal-error',
+      reason instanceof Error ? reason.message : String(reason)
+    )
+  }
+})
 
 /* ==================== 设置存储（electron-store 加密） ==================== */
 
@@ -27,8 +54,11 @@ function createStore(): Store<AppSettings> {
     encryptionKey: getSystemFingerprint(),
     defaults: {
       theme: 'dark' as Theme,
+      language: 'zh' as AppLanguage,
       ai: DEFAULT_AI_SETTINGS,
-      plugins: { disabled: [] as string[] }
+      plugins: { disabled: [] as string[] },
+      onboarded: false,
+      shortcuts: DEFAULT_SHORTCUTS
     }
   }
   try {
@@ -108,25 +138,34 @@ function createMainWindow(): void {
 
 function registerSettingsIpc(): void {
   ipcMain.handle('settings:get', (): AppSettings => {
-    const theme = store.get('theme', 'dark')
-    const ai = store.get('ai') ?? DEFAULT_AI_SETTINGS
-    const plugins = store.get('plugins') ?? { disabled: [] }
-    return { theme, ai, plugins }
+    return readSettings()
   })
 
   ipcMain.handle('settings:set', (_event, patch: Partial<AppSettings>): AppSettings => {
     if (patch.theme !== undefined) store.set('theme', patch.theme)
+    if (patch.language !== undefined) store.set('language', patch.language)
     if (patch.ai !== undefined) {
       store.set('ai', { ...(store.get('ai') ?? DEFAULT_AI_SETTINGS), ...patch.ai })
     }
     if (patch.plugins !== undefined) {
       store.set('plugins', { ...(store.get('plugins') ?? { disabled: [] }), ...patch.plugins })
     }
-    const theme = store.get('theme', 'dark')
-    const ai = store.get('ai') ?? DEFAULT_AI_SETTINGS
-    const plugins = store.get('plugins') ?? { disabled: [] }
-    return { theme, ai, plugins }
+    if (patch.onboarded !== undefined) store.set('onboarded', patch.onboarded)
+    if (patch.shortcuts !== undefined) {
+      store.set('shortcuts', { ...DEFAULT_SHORTCUTS, ...patch.shortcuts })
+    }
+    return readSettings()
   })
+}
+
+function readSettings(): AppSettings {
+  const theme = store.get('theme', 'dark')
+  const language = store.get('language', 'zh')
+  const ai = store.get('ai') ?? DEFAULT_AI_SETTINGS
+  const plugins = store.get('plugins') ?? { disabled: [] }
+  const onboarded = store.get('onboarded', false)
+  const shortcuts = store.get('shortcuts') ?? DEFAULT_SHORTCUTS
+  return { theme, language, ai, plugins, onboarded, shortcuts }
 }
 
 /* ==================== IPC：AI 流式对话 ==================== */
@@ -159,7 +198,9 @@ app.whenReady().then(() => {
   ipcMain.handle('app:get-info', () => ({
     version: app.getVersion(),
     platform: process.platform,
-    theme: store.get('theme', 'dark')
+    theme: store.get('theme', 'dark'),
+    language: store.get('language', 'zh'),
+    onboarded: store.get('onboarded', false)
   }))
 
   registerSettingsIpc()

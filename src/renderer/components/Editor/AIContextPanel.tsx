@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { useExplainStore } from '../../stores/explainStore'
+import { useT } from '../../stores/i18nStore'
 
 /** Ctrl+E 触发的 AI 代码解释浮层（叠加在编辑器上） */
 export default function AIContextPanel(): JSX.Element | null {
+  const t = useT()
   const visible = useExplainStore((s) => s.visible)
   const code = useExplainStore((s) => s.code)
   const content = useExplainStore((s) => s.content)
@@ -31,8 +33,8 @@ export default function AIContextPanel(): JSX.Element | null {
   return (
     <div className="ai-panel">
       <div className="ai-panel__header">
-        <span>{streaming ? 'AI 代码解释（生成中…）' : 'AI 代码解释'}</span>
-        <button onClick={close} title="关闭（Esc）">
+        <span>{streaming ? t('explain.generating') : t('explain.title')}</span>
+        <button onClick={close} title={t('explain.close')}>
           ✕
         </button>
       </div>
@@ -40,7 +42,7 @@ export default function AIContextPanel(): JSX.Element | null {
         <pre>{code}</pre>
       </div>
       <div className={`ai-panel__body${streaming ? ' ai-panel__body--streaming' : ''}`} ref={bodyRef}>
-        {content || (streaming ? '正在思考…' : '')}
+        {content || (streaming ? t('chat.thinking') : '')}
         {error && <div className="ai-panel__error">{error}</div>}
       </div>
     </div>

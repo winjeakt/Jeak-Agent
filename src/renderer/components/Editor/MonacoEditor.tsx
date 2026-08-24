@@ -4,6 +4,7 @@ import type { Diagnostic, EditorStateSnapshot } from '@shared/types'
 import { useEditorStore } from '../../stores/editorStore'
 import { useExplainStore } from '../../stores/explainStore'
 import { useDiagnosticsStore } from '../../stores/diagnosticsStore'
+import { useI18nStore } from '../../stores/i18nStore'
 
 /**
  * Monaco 编辑器：
@@ -111,6 +112,7 @@ export default function MonacoEditor(): JSX.Element {
   const content = useEditorStore((s) => s.content)
   const language = useEditorStore((s) => s.language)
   const setContent = useEditorStore((s) => s.setContent)
+  const theme = useI18nStore((s) => s.theme)
 
   return (
     <Editor
@@ -118,9 +120,9 @@ export default function MonacoEditor(): JSX.Element {
       language={language}
       value={content}
       onChange={(value) => setContent(value ?? '')}
-      theme="vs-dark"
+      theme={theme === 'light' ? 'vs' : 'vs-dark'}
       onMount={handleMount}
-      loading={<div className="empty-placeholder">正在加载编辑器…</div>}
+      loading={<div className="empty-placeholder">{'…'}</div>}
       options={{
         fontSize: 14,
         fontFamily: "Consolas, 'Courier New', monospace",

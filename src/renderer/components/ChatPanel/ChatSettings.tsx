@@ -1,44 +1,100 @@
 import { useEffect, useState } from 'react'
-import type { AIChatModel } from '@shared/types'
+import type { AIChatModel, AppLanguage, ShortcutSettings, Theme } from '@shared/types'
 import { useChatStore } from '../../stores/chatStore'
+import { useI18nStore, useT } from '../../stores/i18nStore'
 import PluginManager from '../PluginManager/PluginManager'
+import { MODEL_OPTIONS } from '../../constants/models'
 
 interface Props {
   onClose: () => void
 }
 
-const MODEL_OPTIONS: Array<{ value: AIChatModel; label: string }> = [
-  { value: 'deepseek-chat', label: 'deepseek-chat（通用对话）' },
-  { value: 'deepseek-reasoner', label: 'deepseek-reasoner（深度推理）' }
-]
+type SettingsTab = 'general' | 'ai' | 'shortcuts' | 'plugins'
 
-type SettingsTab = 'ai' | 'plugins'
-
-/** 设置弹层：AI 设置 / 插件管理 */
+/** 设置中心：通用 / AI / 快捷键 / 插件管理 */
 export default function ChatSettings({ onClose }: Props): JSX.Element {
-  const [tab, setTab] = useState<SettingsTab>('ai')
+  const [tab, setTab] = useState<SettingsTab>('general')
+  const t = useT()
+
+  const tabs: Array<{ key: SettingsTab; label: string }> = [
+    { key: 'general', label: t('settings.tab.general') },
+    { key: 'ai', label: t('settings.tab.ai') },
+    { key: 'shortcuts', label: t('settings.tab.shortcuts') },
+    { key: 'plugins', label: t('settings.tab.plugins') }
+  ]
 
   return (
     <div className="settings-overlay" onClick={onClose}>
       <div className="settings-card settings-card--wide" onClick={(e) => e.stopPropagation()}>
         <div className="settings-card__tabs">
-          <button className={tab === 'ai' ? 'active' : ''} onClick={() => setTab('ai')}>
-            AI 设置
-          </button>
-          <button className={tab === 'plugins' ? 'active' : ''} onClick={() => setTab('plugins')}>
-            插件管理
-          </button>
+          {tabs.map((item) => (
+            <button
+              key={item.key}
+              className={tab === item.key ? 'active' : ''}
+              onClick={() => setTab(item.key)}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
-        {tab === 'ai' ? <AiSettingsTab onClose={onClose} /> : <PluginManager />}
+        {tab === 'general' && <GeneralSettingsTab />}
+        {tab === 'ai' && <AiSettingsTab onClose={onClose} />}
+        {tab === 'shortcuts' && <ShortcutsSettingsTab />}
+        {tab === 'plugins' && <PluginManager />}
       </div>
     </div>
   )
 }
 
-/** AI 设置页：配置 DeepSeek API Key 与模型 */
+/** 通用设置：主题 + 语言 */
+function GeneralSettingsTab(): JSX.Element {
+  const t = useT()
+  const theme = useI18nStore((s) => s.theme)
+  const language = useI18nStore((s) => s.language)
+  const setTheme = useI18nStore((s) => s.setTheme)
+  const setLanguage = useI18nStore((s) => s.setLanguage)
+
+  const handleTheme = async (value: Theme): Promise<void> => {
+    setTheme(value)
+    await window.jeak.settings.set({ theme: value })
+  }
+
+  const handleLanguage = async (value: AppLanguage): Promise<void> => {
+    setLanguage(value)
+    await window.jeak.settings.set({ language: value })
+  }
+
+  return (
+    <>
+      <h3>{t('settings.tab.general')}</h3>
+      <div className="settings-field">
+        <label>{t('settings.theme')}</label>
+        <select value={theme} onChange={(e) => void handleTheme(e.target.value as Theme)}>
+          <option value="dark">{t('settings.theme.dark')}</option>
+          <option value="light">{t('settings.theme.light')}</option>
+        </select>
+      </div>
+      <div className="settings-field">
+        <label>{t('settings.language')}</label>
+        <select
+          value={language}
+          onChange={(e) => void handleLanguage(e.target.value as AppLanguage)}
+        >
+          <option value="zh">{t('settings.language.zh')}</option>
+          <option value="en">{t('settings.language.en')}</option>
+        </select>
+      </div>
+    </>
+  )
+}
+
+/** AI 设置页：API Key、模型、温度、最大 Token */
 function AiSettingsTab({ onClose }: Props): JSX.Element {
+  const t = useT()
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState<AIChatModel>('deepseek-chat')
+  const [temperature, setTemperature] = useState(0.7)
+  const [maxTokens, setMaxTokens] = useState(4096)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
@@ -46,6 +102,8 @@ function AiSettingsTab({ onClose }: Props): JSX.Element {
     window.jeak.settings.get().then((settings) => {
       setApiKey(settings.ai.apiKey)
       setModel(settings.ai.model)
+      setTemperature(settings.ai.temperature)
+      setMaxTokens(settings.ai.maxTokens)
     })
   }, [])
 
@@ -53,7 +111,7 @@ function AiSettingsTab({ onClose }: Props): JSX.Element {
     setSaving(true)
     const trimmed = apiKey.trim()
     await window.jeak.settings.set({
-      ai: { apiKey: trimmed, model, temperature: 0.7, maxTokens: 4096 }
+      ai: { apiKey: trimmed, model, temperature, maxTokens }
     })
     useChatStore.getState().setHasApiKey(Boolean(trimmed))
     setSaving(false)
@@ -63,9 +121,9 @@ function AiSettingsTab({ onClose }: Props): JSX.Element {
 
   return (
     <>
-      <h3>AI 设置</h3>
+      <h3>{t('settings.tab.ai')}</h3>
       <div className="settings-field">
-        <label>DeepSeek API Key</label>
+        <label>{t('settings.apiKey')}</label>
         <input
           type="password"
           value={apiKey}
@@ -75,26 +133,104 @@ function AiSettingsTab({ onClose }: Props): JSX.Element {
         />
       </div>
       <div className="settings-field">
-        <label>模型</label>
+        <label>{t('settings.model')}</label>
         <select value={model} onChange={(e) => setModel(e.target.value as AIChatModel)}>
           {MODEL_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
-              {opt.label}
+              {opt.label}（{opt.description}）
             </option>
           ))}
         </select>
       </div>
-      <p className="settings-card__tip">
-        API Key 由主进程加密存储，仅用于请求 DeepSeek 服务，不会暴露给渲染进程。
-      </p>
+      <div className="settings-field">
+        <label>{t('settings.temperature')}: {temperature.toFixed(1)}</label>
+        <input
+          type="range"
+          min={0}
+          max={2}
+          step={0.1}
+          value={temperature}
+          onChange={(e) => setTemperature(Number(e.target.value))}
+        />
+      </div>
+      <div className="settings-field">
+        <label>{t('settings.maxTokens')}</label>
+        <input
+          type="number"
+          min={1}
+          max={32768}
+          value={maxTokens}
+          onChange={(e) => setMaxTokens(Number(e.target.value))}
+        />
+      </div>
+      <p className="settings-card__tip">{t('settings.tip')}</p>
       <div className="settings-card__actions">
         <button className="ghost" onClick={onClose} disabled={saving}>
-          取消
+          {t('settings.cancel')}
         </button>
         <button className="primary" onClick={() => void handleSave()} disabled={saving}>
-          {saved ? '已保存 ✓' : saving ? '保存中…' : '保存'}
+          {saved ? t('settings.saved') : saving ? t('settings.saving') : t('settings.save')}
         </button>
       </div>
+    </>
+  )
+}
+
+/** 快捷键设置页：可自定义 */
+function ShortcutsSettingsTab(): JSX.Element {
+  const t = useT()
+  const [shortcuts, setShortcuts] = useState<ShortcutSettings | null>(null)
+  const [recording, setRecording] = useState<keyof ShortcutSettings | null>(null)
+
+  useEffect(() => {
+    window.jeak.settings.get().then((s) => setShortcuts(s.shortcuts))
+  }, [])
+
+  const saveShortcut = async (key: keyof ShortcutSettings, value: string): Promise<void> => {
+    const next = { ...(shortcuts ?? {}), [key]: value } as ShortcutSettings
+    setShortcuts(next)
+    await window.jeak.settings.set({ shortcuts: next })
+  }
+
+  const handleKeyDown = (key: keyof ShortcutSettings, e: React.KeyboardEvent): void => {
+    e.preventDefault()
+    e.stopPropagation()
+    const parts: string[] = []
+    if (e.ctrlKey || e.metaKey) parts.push('Ctrl')
+    if (e.shiftKey) parts.push('Shift')
+    if (e.altKey) parts.push('Alt')
+    const code = e.key.length === 1 ? e.key.toUpperCase() : e.key
+    if (!['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) parts.push(code)
+    const combo = parts.join('+')
+    if (combo) {
+      void saveShortcut(key, combo)
+    }
+    setRecording(null)
+  }
+
+  const fields: Array<{ key: keyof ShortcutSettings; label: string }> = [
+    { key: 'explain', label: t('settings.shortcut.explain') },
+    { key: 'send', label: t('settings.shortcut.send') },
+    { key: 'settings', label: t('settings.shortcut.settings') }
+  ]
+
+  return (
+    <>
+      <h3>{t('settings.tab.shortcuts')}</h3>
+      <p className="settings-card__tip">{t('settings.shortcut.hint')}</p>
+      {shortcuts &&
+        fields.map((field) => (
+          <div className="settings-field" key={field.key}>
+            <label>{field.label}</label>
+            <input
+              readOnly
+              value={recording === field.key ? '请按下组合键…' : (shortcuts[field.key] ?? '')}
+              onFocus={() => setRecording(field.key)}
+              onKeyDown={(e) => handleKeyDown(field.key, e)}
+              onBlur={() => setRecording(null)}
+            />
+          </div>
+        ))}
     </>
   )
 }

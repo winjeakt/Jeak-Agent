@@ -1,15 +1,17 @@
 import { useEffect } from 'react'
 import type { PluginInfo, PluginStatus } from '@shared/types'
 import { usePluginStore } from '../../stores/pluginStore'
+import { useT } from '../../stores/i18nStore'
 
-const STATUS_LABEL: Record<PluginStatus, string> = {
-  ready: '运行中',
-  disabled: '已禁用',
-  error: '出错'
+const STATUS_KEY: Record<PluginStatus, 'plugins.status.ready' | 'plugins.status.disabled' | 'plugins.status.error'> = {
+  ready: 'plugins.status.ready',
+  disabled: 'plugins.status.disabled',
+  error: 'plugins.status.error'
 }
 
 /** 插件管理面板：列出已安装插件、启用开关、权限与命令 */
 export default function PluginManager(): JSX.Element {
+  const t = useT()
   const plugins = usePluginStore((s) => s.plugins)
   const loading = usePluginStore((s) => s.loading)
   const error = usePluginStore((s) => s.error)
@@ -30,12 +32,14 @@ export default function PluginManager(): JSX.Element {
   return (
     <div className="plugins">
       <div className="plugins__toolbar">
-        <span className="plugins__count">{loading ? '加载中…' : `${plugins.length} 个插件`}</span>
+        <span className="plugins__count">
+          {loading ? t('plugins.loading') : t('plugins.count', { count: plugins.length })}
+        </span>
         <button className="ghost" onClick={() => void openDir()}>
-          打开插件目录
+          {t('plugins.openDir')}
         </button>
         <button className="ghost" onClick={() => void load()}>
-          刷新
+          {t('plugins.refresh')}
         </button>
       </div>
 
@@ -44,10 +48,8 @@ export default function PluginManager(): JSX.Element {
       {!loading && plugins.length === 0 && (
         <div className="empty-placeholder">
           <div className="empty-placeholder__icon">🧩</div>
-          <div>~/.jeak/plugins 下暂无插件</div>
-          <div style={{ fontSize: 12 }}>
-            将插件目录（含 plugin.json）放入后点击刷新
-          </div>
+          <div>{t('plugins.empty')}</div>
+          <div style={{ fontSize: 12 }}>{t('plugins.refresh')}</div>
         </div>
       )}
 
@@ -75,6 +77,7 @@ function PluginCard({
   onRun: (command: string) => void
   onUninstall: () => void
 }): JSX.Element {
+  const t = useT()
   return (
     <div className={`plugin-card plugin-card--${plugin.status}`}>
       <div className="plugin-card__head">
@@ -82,10 +85,10 @@ function PluginCard({
           <span className="plugin-card__name">{plugin.name}</span>
           <span className="plugin-card__version">v{plugin.version}</span>
           <span className={`plugin-card__status plugin-card__status--${plugin.status}`}>
-            {STATUS_LABEL[plugin.status]}
+            {t(STATUS_KEY[plugin.status])}
           </span>
         </div>
-        <label className="switch" title={plugin.enabled ? '禁用插件' : '启用插件'}>
+        <label className="switch" title={plugin.enabled ? 'disable' : 'enable'}>
           <input
             type="checkbox"
             checked={plugin.enabled}
@@ -95,17 +98,17 @@ function PluginCard({
         </label>
       </div>
 
-      <p className="plugin-card__desc">{plugin.description || '（无描述）'}</p>
+      <p className="plugin-card__desc">{plugin.description || '—'}</p>
 
       <div className="plugin-card__meta">
-        <span>作者 {plugin.author || '未知'}</span>
-        <span>· {plugin.license || '无许可证'}</span>
+        <span>{plugin.author || ''}</span>
+        <span>· {plugin.license || ''}</span>
       </div>
 
       {plugin.permissions.length > 0 && (
         <div className="plugin-card__permissions">
           {plugin.permissions.map((perm) => (
-            <span key={perm} className="perm-chip" title="插件申请的系统权限">
+            <span key={perm} className="perm-chip" title={perm}>
               {perm}
             </span>
           ))}
@@ -122,7 +125,7 @@ function PluginCard({
               onClick={() => onRun(cmd.command)}
               title={cmd.command}
             >
-              ▶ {cmd.title}
+              {t('plugins.run', { title: cmd.title })}
             </button>
           ))}
         </div>
@@ -132,12 +135,12 @@ function PluginCard({
         <button
           className="plugin-card__uninstall"
           onClick={() => {
-            if (window.confirm(`确认卸载插件「${plugin.name}」？将删除插件目录。`)) {
+            if (window.confirm(t('plugins.uninstall.confirm', { name: plugin.name }))) {
               onUninstall()
             }
           }}
         >
-          卸载
+          {t('plugins.uninstall')}
         </button>
       </div>
 

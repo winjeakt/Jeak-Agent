@@ -12,6 +12,25 @@
   --text-primary: #cccccc;
   --text-secondary: #888888;
   --accent: #0e639c;
+  --card-bg: #1f1f1f;
+  --input-bg: #1a1a1a;
+  --panel-header-bg: rgba(0, 0, 0, 0.15);
+  --hover-bg: rgba(255, 255, 255, 0.06);
+}
+
+/* ===== 浅色主题变量 ===== */
+:root[data-theme='light'] {
+  --bg-sidebar: #f3f3f3;
+  --bg-editor: #ffffff;
+  --bg-chat: #f3f3f3;
+  --border-color: #e0e0e0;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --accent: #0066cc;
+  --card-bg: #ffffff;
+  --input-bg: #ffffff;
+  --panel-header-bg: rgba(0, 0, 0, 0.04);
+  --hover-bg: rgba(0, 0, 0, 0.05);
 }
 
 body {
@@ -106,7 +125,7 @@ body {
 }
 
 .chat-header__actions select {
-  background: #333333;
+  background: var(--input-bg);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: 4px;
@@ -200,7 +219,7 @@ body {
 .chat-input textarea {
   width: 100%;
   resize: none;
-  background: #1a1a1a;
+  background: var(--input-bg);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: 6px;
@@ -258,7 +277,7 @@ body {
 
 .settings-card {
   width: 380px;
-  background: #252526;
+  background: var(--bg-sidebar);
   border: 1px solid var(--border-color);
   border-radius: 10px;
   padding: 20px;
@@ -287,7 +306,7 @@ body {
 
 .settings-field input,
 .settings-field select {
-  background: #1a1a1a;
+  background: var(--input-bg);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: 6px;
@@ -514,7 +533,7 @@ body {
 }
 
 .plugin-card {
-  background: #1f1f1f;
+  background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 12px;
@@ -654,7 +673,7 @@ body {
 /* ===== Phase 4：底部问题面板 ===== */
 .diagnostics {
   border-top: 1px solid var(--border-color);
-  background: #1a1a1a;
+  background: var(--input-bg);
   max-height: 180px;
   display: flex;
   flex-direction: column;
@@ -797,4 +816,192 @@ body {
 
 .switch input:checked + .switch__slider::before {
   transform: translateX(16px);
+}
+
+/* ===== Phase 5：启动加载占位 ===== */
+.app-loading {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-editor);
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* ===== Phase 5：引导页 ===== */
+.onboarding {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-editor);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.onboarding__card {
+  width: 480px;
+  max-width: 90%;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 40px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+
+.onboarding__logo {
+  font-size: 56px;
+}
+
+.onboarding__card h1 {
+  margin: 0;
+  font-size: 22px;
+  color: var(--text-primary);
+}
+
+.onboarding__subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.onboarding__features {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.onboarding__features li {
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.onboarding__config {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.onboarding__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.onboarding__actions button {
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.onboarding__actions .primary {
+  background: var(--accent);
+  border: none;
+  color: #ffffff;
+}
+
+.onboarding__actions .ghost {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.onboarding__actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===== Phase 5：全局错误边界 ===== */
+.error-fallback {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-editor);
+}
+
+.error-fallback__card {
+  width: 480px;
+  max-width: 90%;
+  background: var(--bg-sidebar);
+  border: 1px solid #f14c4c;
+  border-radius: 12px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.error-fallback__icon {
+  font-size: 48px;
+}
+
+.error-fallback__card h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 18px;
+}
+
+.error-fallback__card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.error-fallback__msg {
+  width: 100%;
+  max-height: 160px;
+  overflow: auto;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12px;
+  color: #f14c4c;
+  font-family: Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.error-fallback__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.error-fallback__actions button {
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.error-fallback__actions .primary {
+  background: var(--accent);
+  border: none;
+  color: #ffffff;
+}
+
+.error-fallback__actions .ghost {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
 }
