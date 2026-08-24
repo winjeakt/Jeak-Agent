@@ -1,0 +1,199 @@
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { join } from 'path'
+import { rmSync } from 'fs'
+import { hostname } from 'os'
+import Store from 'electron-store'
+import type { AIChatModel, AIChatRequest, AppSettings, Theme } from '../shared/types'
+import { AIService } from './services/AIService'
+import { PluginManager } from '../plugins/runtime/manager'
+
+/* ==================== 设置存储（electron-store 加密） ==================== */
+
+const DEFAULT_AI_SETTINGS = {
+  apiKey: '',
+  model: 'deepseek-chat' as AIChatModel,
+  temperature: 0.7,
+  maxTokens: 4096
+}
+
+/** 基于机器信息派生加密密钥 */
+function getSystemFingerprint(): string {
+  return `jeak-agent-${hostname()}`
+}
+
+function createStore(): Store<AppSettings> {
+  const options = {
+    name: 'jeak-agent-settings',
+    encryptionKey: getSystemFingerprint(),
+    defaults: {
+      theme: 'dark' as Theme,
+      ai: DEFAULT_AI_SETTINGS,
+      plugins: { disabled: [] as string[] }
+    }
+  }
+  try {
+    return new Store<AppSettings>(options)
+  } catch (error) {
+    // 兼容旧版未加密的配置文件：删除后重建
+    console.error('[main] 初始化 store 失败，重置配置文件:', error)
+    const file = join(app.getPath('userData'), 'jeak-agent-settings.json')
+    rmSync(file, { force: true })
+    return new Store<AppSettings>(options)
+  }
+}
+
+const store = createStore()
+
+/* ==================== AI 服务（DeepSeek 流式） ==================== */
+
+const aiService = new AIService({
+  getApiKey: () => (store.get('ai') ?? DEFAULT_AI_SETTINGS).apiKey,
+  getDefaultTemperature: () => (store.get('ai') ?? DEFAULT_AI_SETTINGS).temperature,
+  getDefaultMaxTokens: () => (store.get('ai') ?? DEFAULT_AI_SETTINGS).maxTokens
+})
+
+/* ==================== Phase 3：插件系统 ==================== */
+
+const pluginManager = new PluginManager({
+  aiService,
+  getMainWindow: () => mainWindow,
+  getSettingsStore: () => store
+})
+
+/* ==================== 窗口管理 ==================== */
+
+let mainWindow: BrowserWindow | null = null
+
+function createMainWindow(): void {
+  mainWindow = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    minWidth: 960,
+    minHeight: 600,
+    show: false,
+    autoHideMenuBar: true,
+    title: 'Jeak Agent',
+    backgroundColor: '#1e1e1e',
+    webPreferences: {
+      preload: join(__dirname, '../preload/mainPreload.js'),
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  })
+
+  // 打开外部链接时交给系统浏览器，而非新开窗口
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url)
+    return { action: 'deny' }
+  })
+
+  // 开发模式加载 Vite Dev Server，生产模式加载打包后的 HTML
+  if (process.env['ELECTRON_RENDERER_URL']) {
+    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  } else {
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow?.show()
+  })
+
+  mainWindow.on('closed', () => {
+    mainWindow = null
+  })
+}
+
+/* ==================== IPC：应用信息 / 设置 ==================== */
+
+function registerSettingsIpc(): void {
+  ipcMain.handle('settings:get', (): AppSettings => {
+    const theme = store.get('theme', 'dark')
+    const ai = store.get('ai') ?? DEFAULT_AI_SETTINGS
+    const plugins = store.get('plugins') ?? { disabled: [] }
+    return { theme, ai, plugins }
+  })
+
+  ipcMain.handle('settings:set', (_event, patch: Partial<AppSettings>): AppSettings => {
+    if (patch.theme !== undefined) store.set('theme', patch.theme)
+    if (patch.ai !== undefined) {
+      store.set('ai', { ...(store.get('ai') ?? DEFAULT_AI_SETTINGS), ...patch.ai })
+    }
+    if (patch.plugins !== undefined) {
+      store.set('plugins', { ...(store.get('plugins') ?? { disabled: [] }), ...patch.plugins })
+    }
+    const theme = store.get('theme', 'dark')
+    const ai = store.get('ai') ?? DEFAULT_AI_SETTINGS
+    const plugins = store.get('plugins') ?? { disabled: [] }
+    return { theme, ai, plugins }
+  })
+}
+
+/* ==================== IPC：AI 流式对话 ==================== */
+
+function registerAiIpc(): void {
+  ipcMain.on('ai:chat', (event, request: AIChatRequest) => {
+    void aiService.chat(request, {
+      onDelta: (id, delta) => event.sender.send('ai:chat:delta', { id, delta }),
+      onDone: (id, aborted) => event.sender.send('ai:chat:done', { id, aborted }),
+      onError: (id, message) => event.sender.send('ai:chat:error', { id, message })
+    })
+  })
+
+  ipcMain.on('ai:chat:stop', (_event, id: string) => {
+    aiService.stop(id)
+  })
+}
+
+/* ==================== 应用生命周期 ==================== */
+
+app.whenReady().then(() => {
+  // 全局单实例锁：防止多个实例同时运行
+  const gotTheLock = app.requestSingleInstanceLock()
+  if (!gotTheLock) {
+    app.quit()
+    return
+  }
+
+  // IPC：返回应用信息（供渲染进程展示）
+  ipcMain.handle('app:get-info', () => ({
+    version: app.getVersion(),
+    platform: process.platform,
+    theme: store.get('theme', 'dark')
+  }))
+
+  registerSettingsIpc()
+  registerAiIpc()
+
+  createMainWindow()
+
+  // 初始化插件系统（发现 ~/.jeak/plugins + 启动已启用插件沙箱）
+  void pluginManager.init().then(() => {
+    console.log(`[plugins] 初始化完成，共 ${pluginManager.list().length} 个插件`)
+  })
+
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+  })
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createMainWindow()
+    }
+  })
+})
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
+})
+
+app.on('before-quit', () => {
+  void pluginManager.dispose()
+})
+
+export { store, aiService, pluginManager }
