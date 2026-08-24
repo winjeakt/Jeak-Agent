@@ -100,7 +100,7 @@ export default function ChatPanel(): JSX.Element {
               </option>
             ))}
           </select>
-          <button onClick={openSettings} title={t('chat.settings')}>
+          <button onClick={() => openSettings()} title={t('chat.settings')}>
             ⚙
           </button>
           <button onClick={clearMessages} title={t('chat.clear')}>

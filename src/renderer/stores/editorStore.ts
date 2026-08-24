@@ -14,6 +14,8 @@ interface EditorState {
   setContent: (content: string) => void
   /** 关闭文件 */
   closeFile: () => void
+  /** 新建空白文件 */
+  newFile: () => void
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -22,5 +24,6 @@ export const useEditorStore = create<EditorState>((set) => ({
   language: 'typescript',
   openFile: (path, content, language) => set({ currentFile: path, content, language }),
   setContent: (content) => set({ content }),
-  closeFile: () => set({ currentFile: null, content: '', language: 'plaintext' })
+  closeFile: () => set({ currentFile: null, content: '', language: 'plaintext' }),
+  newFile: () => set({ currentFile: null, content: '', language: 'plaintext' })
 }))

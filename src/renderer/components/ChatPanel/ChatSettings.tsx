@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { AIChatModel, AppLanguage, ShortcutSettings, Theme } from '@shared/types'
 import { useChatStore } from '../../stores/chatStore'
 import { useI18nStore, useT } from '../../stores/i18nStore'
+import { useThemeStore } from '../../stores/themeStore'
+import { useUIStore, type SettingsTab } from '../../stores/uiStore'
 import PluginManager from '../PluginManager/PluginManager'
 import { MODEL_OPTIONS } from '../../constants/models'
 
@@ -9,12 +11,16 @@ interface Props {
   onClose: () => void
 }
 
-type SettingsTab = 'general' | 'ai' | 'shortcuts' | 'plugins'
-
 /** 设置中心：通用 / AI / 快捷键 / 插件管理 */
 export default function ChatSettings({ onClose }: Props): JSX.Element {
-  const [tab, setTab] = useState<SettingsTab>('general')
+  const settingsTab = useUIStore((s) => s.settingsTab)
+  const [tab, setTab] = useState<SettingsTab>(settingsTab ?? 'general')
   const t = useT()
+
+  // 菜单栏可指定要打开的 tab（如"插件面板"跳转到 plugins）
+  useEffect(() => {
+    if (settingsTab) setTab(settingsTab)
+  }, [settingsTab])
 
   const tabs: Array<{ key: SettingsTab; label: string }> = [
     { key: 'general', label: t('settings.tab.general') },
@@ -49,14 +55,14 @@ export default function ChatSettings({ onClose }: Props): JSX.Element {
 /** 通用设置：主题 + 语言 */
 function GeneralSettingsTab(): JSX.Element {
   const t = useT()
-  const theme = useI18nStore((s) => s.theme)
+  const theme = useThemeStore((s) => s.theme)
+  const setTheme = useThemeStore((s) => s.setTheme)
   const language = useI18nStore((s) => s.language)
-  const setTheme = useI18nStore((s) => s.setTheme)
   const setLanguage = useI18nStore((s) => s.setLanguage)
 
-  const handleTheme = async (value: Theme): Promise<void> => {
+  // themeStore 内部已完成 DOM 切换 + i18nStore 同步 + 持久化
+  const handleTheme = (value: Theme): void => {
     setTheme(value)
-    await window.jeak.settings.set({ theme: value })
   }
 
   const handleLanguage = async (value: AppLanguage): Promise<void> => {
@@ -69,9 +75,10 @@ function GeneralSettingsTab(): JSX.Element {
       <h3>{t('settings.tab.general')}</h3>
       <div className="settings-field">
         <label>{t('settings.theme')}</label>
-        <select value={theme} onChange={(e) => void handleTheme(e.target.value as Theme)}>
+        <select value={theme} onChange={(e) => handleTheme(e.target.value as Theme)}>
           <option value="dark">{t('settings.theme.dark')}</option>
           <option value="light">{t('settings.theme.light')}</option>
+          <option value="system">{t('settings.theme.system')}</option>
         </select>
       </div>
       <div className="settings-field">

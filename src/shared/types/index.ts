@@ -11,8 +11,8 @@ export type EditorLanguage =
   | 'python'
   | 'plaintext'
 
-/** 应用主题 */
-export type Theme = 'dark' | 'light'
+/** 应用主题（system 表示跟随操作系统） */
+export type Theme = 'dark' | 'light' | 'system'
 
 /** 界面语言 */
 export type AppLanguage = 'zh' | 'en'
@@ -70,6 +70,10 @@ export interface AppSettings {
   shortcuts: ShortcutSettings
   /** Phase 6：界面布局 */
   layout: LayoutSettings
+  /** 最近打开的项目/文件路径列表（供"文件"菜单展示） */
+  recentProjects: string[]
+  /** 是否开启自动保存 */
+  autoSave: boolean
 }
 
 /** 快捷键设置（可自定义） */
@@ -260,4 +264,31 @@ export interface ProjectInfo {
   root: string | null
   /** 当前打开的文件列表 */
   openFiles: string[]
+}
+
+/* ==================== 菜单栏文件操作 ==================== */
+
+/** 文件打开结果（主进程 dialog -> 渲染进程） */
+export interface FileOpenResult {
+  /** 用户是否取消 */
+  canceled: boolean
+  /** 文件绝对路径 */
+  path?: string
+  /** 文件内容（取消或读取失败时为空） */
+  content?: string
+  /** 根据扩展名推断的语言 */
+  language?: EditorLanguage
+}
+
+/** 文件保存结果 */
+export interface FileSaveResult {
+  canceled: boolean
+  /** 保存后的文件路径 */
+  path?: string
+}
+
+/** 打开文件夹结果 */
+export interface FolderOpenResult {
+  canceled: boolean
+  path?: string
 }

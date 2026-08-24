@@ -15,6 +15,9 @@ import { AIService } from './services/AIService'
 import { PluginManager } from '../plugins/runtime/manager'
 import { TerminalService, registerTerminalIpc } from './services/TerminalService'
 import { registerWindowControls } from './windowControls'
+import { registerMenuIpc } from './menuIpc'
+import { createTray, destroyTray } from './tray'
+import { createAppIcon } from './icon'
 
 /* ==================== 全局错误处理 ==================== */
 
@@ -61,7 +64,9 @@ function createStore(): Store<AppSettings> {
       plugins: { disabled: [] as string[] },
       onboarded: false,
       shortcuts: DEFAULT_SHORTCUTS,
-      layout: DEFAULT_LAYOUT
+      layout: DEFAULT_LAYOUT,
+      recentProjects: [] as string[],
+      autoSave: false
     }
   }
   try {
@@ -97,6 +102,8 @@ const pluginManager = new PluginManager({
 
 let mainWindow: BrowserWindow | null = null
 let terminalService: TerminalService | null = null
+/** 是否为「完全退出」：false 时点关闭仅隐藏到托盘 */
+let isQuitting = false
 
 function createMainWindow(): void {
   mainWindow = new BrowserWindow({
@@ -108,6 +115,7 @@ function createMainWindow(): void {
     frame: false,
     autoHideMenuBar: true,
     title: 'Jeak Agent',
+    icon: createAppIcon(),
     backgroundColor: '#1e1e2e',
     webPreferences: {
       preload: join(__dirname, '../preload/mainPreload.js'),
@@ -134,10 +142,21 @@ function createMainWindow(): void {
     mainWindow?.show()
   })
 
+  // 关闭 = 隐藏到托盘（仅当「完全退出」时才真正关闭）
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault()
+      mainWindow?.hide()
+    }
+  })
+
   mainWindow.on('closed', () => {
     terminalService?.dispose()
     terminalService = null
     mainWindow = null
+    // 关键：销毁所有插件沙箱窗口。插件沙箱是 show:false 的隐藏 BrowserWindow，
+    // 若不销毁会阻止 window-all-closed 触发，导致点关闭后进程残留（幽灵进程）。
+    void pluginManager.dispose()
   })
 
   // 创建终端服务（绑定主窗口 webContents）
@@ -167,6 +186,8 @@ function registerSettingsIpc(): void {
     if (patch.layout !== undefined) {
       store.set('layout', { ...DEFAULT_LAYOUT, ...patch.layout })
     }
+    if (patch.recentProjects !== undefined) store.set('recentProjects', patch.recentProjects)
+    if (patch.autoSave !== undefined) store.set('autoSave', patch.autoSave)
     return readSettings()
   })
 }
@@ -179,7 +200,9 @@ function readSettings(): AppSettings {
   const onboarded = store.get('onboarded', false)
   const shortcuts = store.get('shortcuts') ?? DEFAULT_SHORTCUTS
   const layout = store.get('layout') ?? DEFAULT_LAYOUT
-  return { theme, language, ai, plugins, onboarded, shortcuts, layout }
+  const recentProjects = store.get('recentProjects') ?? []
+  const autoSave = store.get('autoSave', false)
+  return { theme, language, ai, plugins, onboarded, shortcuts, layout, recentProjects, autoSave }
 }
 
 /* ==================== IPC：AI 流式对话 ==================== */
@@ -201,6 +224,9 @@ function registerAiIpc(): void {
 /* ==================== 应用生命周期 ==================== */
 
 app.whenReady().then(() => {
+  // Windows 任务栏分组/图标关联
+  app.setAppUserModelId('com.jeak.agent')
+
   // 全局单实例锁：防止多个实例同时运行
   const gotTheLock = app.requestSingleInstanceLock()
   if (!gotTheLock) {
@@ -221,8 +247,16 @@ app.whenReady().then(() => {
   registerAiIpc()
   registerTerminalIpc(() => terminalService)
   registerWindowControls(() => mainWindow)
+  registerMenuIpc({
+    getWindow: () => mainWindow,
+    getRecentProjects: () => store.get('recentProjects', []),
+    setRecentProjects: (list) => store.set('recentProjects', list)
+  })
 
   createMainWindow()
+
+  // 系统托盘：关闭后隐藏窗口，右键托盘可「完全退出」
+  createTray(() => mainWindow, () => app.quit())
 
   // 初始化插件系统（发现 ~/.jeak/plugins + 启动已启用插件沙箱）
   void pluginManager.init().then(() => {
@@ -232,6 +266,7 @@ app.whenReady().then(() => {
   app.on('second-instance', () => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.show()
       mainWindow.focus()
     }
   })
@@ -250,6 +285,8 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  isQuitting = true
+  destroyTray()
   void pluginManager.dispose()
 })
 

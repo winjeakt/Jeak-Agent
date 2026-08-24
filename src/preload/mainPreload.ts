@@ -6,6 +6,9 @@ import type {
   EditorApplyAction,
   EditorShowDiagnosticsAction,
   EditorStateSnapshot,
+  FileOpenResult,
+  FileSaveResult,
+  FolderOpenResult,
   PluginInfo
 } from '../shared/types'
 
@@ -38,12 +41,16 @@ const api = {
       ipcRenderer.removeListener('app:fatal-error', listener)
     }
   },
-  /** 窗口控制（自定义标题栏） */
+  /** 窗口控制（自定义标题栏 / 菜单栏） */
   window: {
     minimize: (): void => ipcRenderer.send('window:minimize'),
     toggleMaximize: (): void => ipcRenderer.send('window:toggle-maximize'),
     close: (): void => ipcRenderer.send('window:close'),
-    isMaximized: (): Promise<boolean> => ipcRenderer.invoke('window:is-maximized')
+    isMaximized: (): Promise<boolean> => ipcRenderer.invoke('window:is-maximized'),
+    toggleFullscreen: (): void => ipcRenderer.send('window:fullscreen'),
+    zoomIn: (): void => ipcRenderer.send('window:zoom-in'),
+    zoomOut: (): void => ipcRenderer.send('window:zoom-out'),
+    zoomReset: (): void => ipcRenderer.send('window:zoom-reset')
   },
   /** 设置读写（API Key 等，主进程加密存储） */
   settings: {
@@ -163,6 +170,40 @@ const api = {
         ipcRenderer.removeListener('terminal:output', listener)
       }
     }
+  },
+  /** 文件对话框（菜单栏"文件"菜单） */
+  file: {
+    open: (): Promise<FileOpenResult> => ipcRenderer.invoke('file:open'),
+    openFolder: (): Promise<FolderOpenResult> => ipcRenderer.invoke('file:open-folder'),
+    save: (path: string | null, content: string): Promise<FileSaveResult> =>
+      ipcRenderer.invoke('file:save', { path, content }),
+    saveAs: (content: string): Promise<FileSaveResult> =>
+      ipcRenderer.invoke('file:save-as', { content })
+  },
+  /** 最近打开的项目（菜单栏"文件"菜单） */
+  recent: {
+    list: (): Promise<string[]> => ipcRenderer.invoke('recent:list'),
+    add: (path: string): Promise<string[]> => ipcRenderer.invoke('recent:add', path),
+    clear: (): Promise<string[]> => ipcRenderer.invoke('recent:clear')
+  },
+  /** shell（外部链接 / 日志文件夹，菜单栏"帮助"菜单） */
+  shell: {
+    openExternal: (url: string): Promise<{ ok: boolean }> =>
+      ipcRenderer.invoke('shell:open-external', url),
+    openLogs: (): Promise<{ ok: boolean; path: string }> => ipcRenderer.invoke('shell:open-logs')
+  },
+  /** 应用信息（菜单栏"帮助"菜单） */
+  app: {
+    about: (): Promise<{
+      name: string
+      version: string
+      electron: string
+      chrome: string
+      node: string
+      platform: string
+    }> => ipcRenderer.invoke('app:about'),
+    checkUpdate: (): Promise<{ available: boolean; version: string }> =>
+      ipcRenderer.invoke('app:check-update')
   }
 }
 

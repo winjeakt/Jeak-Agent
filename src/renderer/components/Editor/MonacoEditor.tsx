@@ -5,6 +5,7 @@ import { useEditorStore } from '../../stores/editorStore'
 import { useExplainStore } from '../../stores/explainStore'
 import { useDiagnosticsStore } from '../../stores/diagnosticsStore'
 import { useI18nStore } from '../../stores/i18nStore'
+import { setEditorInstance } from '../MenuBar/editorCommands'
 
 /**
  * Monaco 编辑器：
@@ -15,6 +16,9 @@ import { useI18nStore } from '../../stores/i18nStore'
  *   无选区时解释光标所在行。
  */
 const handleMount: OnMount = (editor, monaco) => {
+  /* 注册编辑器实例，供菜单栏（编辑菜单）命令桥接使用 */
+  setEditorInstance(editor)
+
   /* ---- 编辑器状态镜像同步（供插件 editor API） ---- */
   let lastSync = 0
   const syncState = (): void => {
@@ -105,6 +109,7 @@ const handleMount: OnMount = (editor, monaco) => {
     selectionDisposable.dispose()
     unsubscribeApply()
     unsubscribeDiagnostics()
+    setEditorInstance(null)
   })
 }
 

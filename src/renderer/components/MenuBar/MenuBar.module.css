@@ -1,0 +1,178 @@
+/* ==================== 菜单栏容器 ==================== */
+
+.menubar {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  gap: 2px;
+  user-select: none;
+}
+
+.menuGroup {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* ==================== 菜单按钮 ==================== */
+
+.menuButton {
+  height: 100%;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.menuButton:hover,
+.menuButtonActive {
+  background: var(--menu-hover-bg);
+  color: var(--menu-hover-text);
+}
+
+/* ==================== 下拉面板（毛玻璃 + 阴影） ==================== */
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 250px;
+  padding: 6px;
+  background: var(--dropdown-bg);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  z-index: 1000;
+  animation: dropdownIn 0.12s ease-out;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==================== 菜单项 ==================== */
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.item:hover {
+  background: var(--menu-hover-bg);
+  color: var(--menu-hover-text);
+}
+
+.itemDisabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.itemDisabled:hover {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.itemDanger {
+  color: #e5534b;
+}
+
+.itemDanger:hover {
+  background: #e5534b;
+  color: #ffffff;
+}
+
+/* 勾选占位（保证 label 对齐） */
+.check {
+  width: 16px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 12px;
+}
+
+.label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 快捷键 <kbd> 徽章 */
+.kbd {
+  margin-left: 16px;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: rgba(127, 127, 127, 0.12);
+  border: 1px solid var(--border-color);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.item:hover .kbd {
+  color: var(--menu-hover-text);
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* 子菜单箭头 */
+.arrow {
+  margin-left: 4px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.item:hover .arrow {
+  color: var(--menu-hover-text);
+}
+
+/* 分隔线 */
+.separator {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--border-color);
+}
+
+/* ==================== 子菜单 ==================== */
+
+.submenu {
+  position: absolute;
+  top: -6px;
+  left: calc(100% + 4px);
+  min-width: 200px;
+  padding: 6px;
+  background: var(--dropdown-bg);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  z-index: 1001;
+  animation: dropdownIn 0.12s ease-out;
+}

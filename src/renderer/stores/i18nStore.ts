@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AppLanguage, Theme } from '@shared/types'
 import { messages, type MessageKey } from '../i18n/messages'
+import { applyThemeToDom } from '../utils/theme'
 
 interface I18nState {
   language: AppLanguage
@@ -19,8 +20,8 @@ export const useI18nStore = create<I18nState>((set, get) => ({
   setLanguage: (language) => set({ language }),
   setTheme: (theme) => {
     set({ theme })
-    // 同步到 DOM（CSS 变量切换）
-    document.documentElement.setAttribute('data-theme', theme)
+    // 同步到 DOM（CSS 变量切换），system 会解析为实际明暗主题
+    applyThemeToDom(theme)
   },
 
   t: (key, vars) => {
