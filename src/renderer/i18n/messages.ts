@@ -206,8 +206,11 @@ export const messages = {
     'plugins.market.empty': '暂无可用插件',
     'plugins.market.install': '安装',
     'plugins.market.installed': '已安装',
+    'plugins.market.installing': '安装中…',
+    'plugins.market.installSuccess': '插件「{name}」安装成功',
+    'plugins.market.installFail': '安装失败：{error}',
     'plugins.tab.installed': '已安装',
-    'plugins.tab.market': '市场'
+    'plugins.tab.market': '从市场安装'
   },
   en: {
     'app.title': 'Jeak Agent',
@@ -410,8 +413,11 @@ export const messages = {
     'plugins.market.empty': 'No plugins available',
     'plugins.market.install': 'Install',
     'plugins.market.installed': 'Installed',
+    'plugins.market.installing': 'Installing…',
+    'plugins.market.installSuccess': 'Plugin "{name}" installed successfully',
+    'plugins.market.installFail': 'Install failed: {error}',
     'plugins.tab.installed': 'Installed',
-    'plugins.tab.market': 'Market'
+    'plugins.tab.market': 'Install from Market'
   }
 } as const
 

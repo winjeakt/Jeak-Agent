@@ -1,7 +1,10 @@
 import { useEffect } from 'react'
-import type { MarketPluginInfo, PluginInfo, PluginStatus } from '@shared/types'
+import type { PluginInfo, PluginStatus } from '@shared/types'
 import { usePluginStore } from '../../stores/pluginStore'
 import { useT } from '../../stores/i18nStore'
+
+/** 在线插件市场地址（awesome-copilot 社区） */
+const AWESOME_MARKET_URL = 'https://github.com/github/awesome-copilot/tree/main/plugins'
 
 const STATUS_KEY: Record<PluginStatus, 'plugins.status.ready' | 'plugins.status.disabled' | 'plugins.status.error'> = {
   ready: 'plugins.status.ready',
@@ -21,12 +24,6 @@ export default function PluginManager(): JSX.Element {
   const uninstall = usePluginStore((s) => s.uninstall)
   const openDir = usePluginStore((s) => s.openDir)
   const applyList = usePluginStore((s) => s.applyList)
-  const market = usePluginStore((s) => s.market)
-  const marketLoading = usePluginStore((s) => s.marketLoading)
-  const loadMarket = usePluginStore((s) => s.loadMarket)
-  const installFromMarket = usePluginStore((s) => s.installFromMarket)
-  const activeTab = usePluginStore((s) => s.activeTab)
-  const setActiveTab = usePluginStore((s) => s.setActiveTab)
 
   useEffect(() => {
     void load()
@@ -35,32 +32,16 @@ export default function PluginManager(): JSX.Element {
     return unsubscribe
   }, [load, applyList])
 
-  // 切换到市场标签页时拉取市场列表
-  useEffect(() => {
-    if (activeTab === 'market') void loadMarket()
-  }, [activeTab, loadMarket])
+  const openMarket = (): void => {
+    void window.jeak.shell.openExternal(AWESOME_MARKET_URL)
+  }
 
   return (
     <div className="plugins">
       <div className="plugins__toolbar">
-        <div className="plugins__tabs" role="tablist">
-          <button
-            role="tab"
-            aria-selected={activeTab === 'installed'}
-            className={`plugins__tab${activeTab === 'installed' ? ' plugins__tab--active' : ''}`}
-            onClick={() => setActiveTab('installed')}
-          >
-            {t('plugins.tab.installed')}
-          </button>
-          <button
-            role="tab"
-            aria-selected={activeTab === 'market'}
-            className={`plugins__tab${activeTab === 'market' ? ' plugins__tab--active' : ''}`}
-            onClick={() => setActiveTab('market')}
-          >
-            {t('plugins.tab.market')}
-          </button>
-        </div>
+        <button className="ghost" onClick={openMarket} title={AWESOME_MARKET_URL}>
+          {t('plugins.tab.market')}
+        </button>
         <span className="plugins__count">
           {loading ? t('plugins.loading') : t('plugins.count', { count: plugins.length })}
         </span>
@@ -74,46 +55,23 @@ export default function PluginManager(): JSX.Element {
 
       {error && <div className="plugin-card__error">{error}</div>}
 
-      {activeTab === 'installed' && (
-        <>
-          {!loading && plugins.length === 0 && (
-            <div className="empty-placeholder">
-              <div className="empty-placeholder__icon">🧩</div>
-              <div>{t('plugins.empty')}</div>
-              <div style={{ fontSize: 12 }}>{t('plugins.refresh')}</div>
-            </div>
-          )}
-
-          {plugins.map((plugin) => (
-            <PluginCard
-              key={plugin.name}
-              plugin={plugin}
-              onToggle={(enabled) => void toggle(plugin.name, enabled)}
-              onRun={(command) => void runCommand(command)}
-              onUninstall={() => void uninstall(plugin.name)}
-            />
-          ))}
-        </>
+      {!loading && plugins.length === 0 && (
+        <div className="empty-placeholder">
+          <div className="empty-placeholder__icon">🧩</div>
+          <div>{t('plugins.empty')}</div>
+          <div style={{ fontSize: 12 }}>{t('plugins.refresh')}</div>
+        </div>
       )}
 
-      {activeTab === 'market' && (
-        <>
-          {!marketLoading && market.length === 0 && (
-            <div className="empty-placeholder">
-              <div className="empty-placeholder__icon">🛍️</div>
-              <div>{t('plugins.market.empty')}</div>
-            </div>
-          )}
-
-          {market.map((item) => (
-            <MarketCard
-              key={item.name}
-              item={item}
-              onInstall={() => void installFromMarket(item.name)}
-            />
-          ))}
-        </>
-      )}
+      {plugins.map((plugin) => (
+        <PluginCard
+          key={plugin.name}
+          plugin={plugin}
+          onToggle={(enabled) => void toggle(plugin.name, enabled)}
+          onRun={(command) => void runCommand(command)}
+          onUninstall={() => void uninstall(plugin.name)}
+        />
+      ))}
     </div>
   )
 }
@@ -197,34 +155,6 @@ function PluginCard({
       </div>
 
       {plugin.error && <div className="plugin-card__error">{plugin.error}</div>}
-    </div>
-  )
-}
-
-function MarketCard({
-  item,
-  onInstall
-}: {
-  item: MarketPluginInfo
-  onInstall: () => void
-}): JSX.Element {
-  const t = useT()
-  return (
-    <div className="plugin-card">
-      <div className="plugin-card__head">
-        <div className="plugin-card__title">
-          <span className="plugin-card__name">{item.name}</span>
-          <span className="plugin-card__version">v{item.version}</span>
-        </div>
-        <button className="plugin-card__install" disabled={item.installed} onClick={onInstall}>
-          {item.installed ? t('plugins.market.installed') : t('plugins.market.install')}
-        </button>
-      </div>
-      <p className="plugin-card__desc">{item.description || '—'}</p>
-      <div className="plugin-card__meta">
-        <span>{item.author || ''}</span>
-        <span>· {item.license || ''}</span>
-      </div>
     </div>
   )
 }

@@ -12,7 +12,6 @@ export function usePluginsMenuItems(): MenuItem[] {
   const toggle = usePluginStore((s) => s.toggle)
   const installLocal = usePluginStore((s) => s.installLocal)
   const create = usePluginStore((s) => s.create)
-  const setActiveTab = usePluginStore((s) => s.setActiveTab)
   const openSettings = useUIStore((s) => s.openSettings)
 
   useEffect(() => {
@@ -53,10 +52,8 @@ export function usePluginsMenuItems(): MenuItem[] {
     {
       id: 'install-market',
       label: t('menu.plugins.market'),
-      onClick: () => {
-        setActiveTab('market')
-        openSettings('plugins')
-      }
+      onClick: () =>
+        void window.jeak.shell.openExternal('https://github.com/github/awesome-copilot/tree/main/plugins')
     },
     { id: 'install-local', label: t('menu.plugins.installLocal'), onClick: handleInstallLocal },
     { id: 'sep-1', label: '', separator: true },
