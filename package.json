@@ -1,6 +1,6 @@
 {
   "name": "jeak-agent",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Jeak Agent - AI Native 本地化编程助手桌面平台",
   "main": "./out/main/main.js",
   "author": "jeak",
