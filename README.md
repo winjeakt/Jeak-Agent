@@ -161,6 +161,45 @@ cp -r my-plugin ~/.jeak/plugins/
 
 重启应用后，在「设置 → 插件管理」中启用、运行或卸载插件。
 
+### 官方插件索引
+
+Jeak Agent 维护一份轻量级「官方插件索引」`plugins-index.json`（仓库根目录），
+用于在插件市场顶部展示**官方推荐**与**精选**插件，帮助用户发现高质量插件：
+
+```json
+{
+  "version": 1,
+  "plugins": [
+    {
+      "name": "插件名称",
+      "description": "简短描述",
+      "author": "作者名",
+      "repo": "https://github.com/作者/仓库名",
+      "category": "分类（如：代码工具 / Git / 调试）",
+      "verified": true,
+      "featured": false
+    }
+  ]
+}
+```
+
+字段说明：
+
+| 字段 | 说明 |
+|---|---|
+| `name` | 插件名称（唯一标识） |
+| `description` | 简短描述 |
+| `author` | 作者名 |
+| `repo` | 插件 GitHub 仓库地址（用于「安装」） |
+| `category` | 分类（代码工具 / Git / 调试 等） |
+| `verified` | 是否官方认证 |
+| `featured` | 是否精选：`true` 会在市场顶部「官方推荐」区块置顶展示，并带「精选」徽标 |
+
+在「设置 → 插件管理 → 从市场安装」中，官方推荐与精选插件会优先展示，点击「安装」
+即从对应 `repo` 拉取安装。当前索引为空，向 `plugins` 数组添加条目即可上线官方插件。
+
+> 📖 开发者请看：[插件开发指南](docs/plugin-development.md) —— 从零开始创建、调试并发布你的第一个插件。
+
 ## 🔒 安全模型
 
 插件运行在多层安全沙箱内：

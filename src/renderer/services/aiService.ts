@@ -58,6 +58,7 @@ export interface AIChatEvents {
   onDone?: (payload: { id: string; aborted?: boolean }) => void
   onError?: (payload: { id: string; message: string }) => void
   onToolCall?: (payload: { id: string; name: string; argsJson: string }) => void
+  onToolResult?: (payload: { id: string; name: string; ok: boolean; result: string }) => void
 }
 
 /**
@@ -82,6 +83,7 @@ export const aiService = {
     if (events.onDone) unsubscribes.push(window.jeak.ai.onDone(events.onDone))
     if (events.onError) unsubscribes.push(window.jeak.ai.onError(events.onError))
     if (events.onToolCall) unsubscribes.push(window.jeak.ai.onToolCall(events.onToolCall))
+    if (events.onToolResult) unsubscribes.push(window.jeak.ai.onToolResult(events.onToolResult))
     return () => {
       unsubscribes.forEach((unsub) => unsub())
     }

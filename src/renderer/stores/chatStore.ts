@@ -2,6 +2,14 @@ import { create } from 'zustand'
 import type { AIChatMessage, AIChatModel } from '@shared/types'
 import { aiService, buildChatRequest, buildSystemPrompt, buildUserContext } from '../services/aiService'
 
+/** 一次工具调用的完整生命周期记录 */
+export interface ToolCallRecord {
+  name: string
+  status: 'running' | 'success' | 'error'
+  result?: string
+  error?: string
+}
+
 /** 渲染进程侧的对话消息（含流式/错误状态） */
 export interface ChatMessage {
   id: string
@@ -10,8 +18,8 @@ export interface ChatMessage {
   timestamp: number
   streaming?: boolean
   error?: string
-  /** 当前正在调用的 MCP 工具名（function calling 展示） */
-  toolCall?: string
+  /** 本条 assistant 消息中发生的工具调用记录（开始→返回/失败） */
+  toolCalls?: ToolCallRecord[]
 }
 
 function genId(): string {
@@ -44,7 +52,7 @@ function ensureListeners(): void {
     onDelta: ({ id, delta }) => {
       useChatStore.setState((s) => ({
         messages: s.messages.map((m) =>
-          m.id === id ? { ...m, content: m.content + delta, toolCall: undefined } : m
+          m.id === id ? { ...m, content: m.content + delta } : m
         )
       }))
     },
@@ -52,7 +60,7 @@ function ensureListeners(): void {
       useChatStore.setState((s) => ({
         isStreaming: false,
         messages: s.messages.map((m) =>
-          m.id === id ? { ...m, streaming: false, toolCall: undefined } : m
+          m.id === id ? { ...m, streaming: false } : m
         )
       }))
     },
@@ -64,7 +72,33 @@ function ensureListeners(): void {
     },
     onToolCall: ({ id, name }) => {
       useChatStore.setState((s) => ({
-        messages: s.messages.map((m) => (m.id === id ? { ...m, toolCall: name } : m))
+        messages: s.messages.map((m) =>
+          m.id === id
+            ? { ...m, toolCalls: [...(m.toolCalls ?? []), { name, status: 'running' as const }] }
+            : m
+        )
+      }))
+    },
+    onToolResult: ({ id, name, ok, result }) => {
+      useChatStore.setState((s) => ({
+        messages: s.messages.map((m) => {
+          if (m.id !== id) return m
+          const toolCalls = [...(m.toolCalls ?? [])]
+          const record: ToolCallRecord = ok
+            ? { name, status: 'success', result }
+            : { name, status: 'error', error: result }
+          // 找到最后一个同名且仍在运行的记录，更新其状态
+          let idx = -1
+          for (let i = toolCalls.length - 1; i >= 0; i--) {
+            if (toolCalls[i].name === name && toolCalls[i].status === 'running') {
+              idx = i
+              break
+            }
+          }
+          if (idx >= 0) toolCalls[idx] = record
+          else toolCalls.push(record)
+          return { ...m, toolCalls }
+        })
       }))
     }
   })

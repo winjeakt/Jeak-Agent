@@ -19,7 +19,7 @@ export default function Onboarding({ onComplete }: Props): JSX.Element {
     if (apiKey.trim()) {
       setSaving(true)
       await window.jeak.settings.set({
-        ai: { apiKey: apiKey.trim(), model, temperature: 0.7, maxTokens: 4096 }
+        ai: { apiKey: apiKey.trim(), model, temperature: 0.7, maxTokens: 8192 }
       })
       setSaving(false)
     }

@@ -237,9 +237,9 @@ export class PluginManager {
   }
 
   /** 从 GitHub 仓库地址安装插件：下载官方插件到本地并建立 skills 桥接索引 */
-  async installFromGithub(url: string): Promise<PluginInfo[]> {
+  async installFromGithub(url: string, force = false): Promise<PluginInfo[]> {
     const pluginsRoot = resolve(this.pluginsRoot || discoverPluginDirectories().pluginsRoot)
-    await importPluginFromGitHub(String(url), pluginsRoot)
+    await importPluginFromGitHub(String(url), pluginsRoot, force)
     await this.refresh()
     return this.list()
   }
@@ -557,8 +557,8 @@ export class PluginManager {
     ipcMain.handle('plugins:market:install', async (_e, name: string) => {
       return this.installFromMarket(String(name))
     })
-    ipcMain.handle('plugins:install-github', async (_e, url: string) => {
-      return this.installFromGithub(String(url))
+    ipcMain.handle('plugins:install-github', async (_e, url: string, force = false) => {
+      return this.installFromGithub(String(url), Boolean(force))
     })
 
     // 编辑器状态镜像：主窗口渲染进程实时同步（供插件 editor API 读取）

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { ShellKind } from '@shared/types'
+import { useI18nStore } from './i18nStore'
 
 export interface TerminalLine {
   kind: 'stdout' | 'stderr' | 'system'
@@ -64,9 +65,11 @@ export const useTerminalStore = create<TerminalState>((set, get) => {
 
     createSession: (shell = 'powershell') => {
       const id = makeId()
+      // makeId 已递增 sessionSeq，故此处读取到的是当前会话序号
+      const name = useI18nStore.getState().t('terminal.sessionName', { n: sessionSeq })
       const session: TerminalSessionState = {
         id,
-        name: id,
+        name,
         shell,
         started: false,
         lines: [],

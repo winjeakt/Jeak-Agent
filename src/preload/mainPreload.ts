@@ -1,7 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
   AIChatRequest,
+  AIToolDefinition,
   AppSettings,
+  AwesomePluginInfo,
   CheckUpdateResult,
   Diagnostic,
   EditorApplyAction,
@@ -12,6 +14,7 @@ import type {
   FileTreeNode,
   FolderOpenResult,
   MarketPluginInfo,
+  OfficialPluginEntry,
   PluginInfo,
   ShellKind,
   UpdateState,
@@ -116,7 +119,25 @@ const api = {
       return () => {
         ipcRenderer.removeListener('ai:chat:tool-call', listener)
       }
+    },
+    /** 订阅工具执行结果事件 */
+    onToolResult: (
+      callback: (payload: { id: string; name: string; ok: boolean; result: string }) => void
+    ): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: { id: string; name: string; ok: boolean; result: string }
+      ): void => callback(payload)
+      ipcRenderer.on('ai:chat:tool-result', listener)
+      return () => {
+        ipcRenderer.removeListener('ai:chat:tool-result', listener)
+      }
     }
+  },
+  /** MCP 工具 */
+  mcp: {
+    /** 获取当前已加载的 MCP 工具列表 */
+    listTools: (): Promise<AIToolDefinition[]> => ipcRenderer.invoke('mcp:list-tools')
   },
   /** 编辑器状态同步与插件写入（Phase 3） */
   editor: {
@@ -169,9 +190,15 @@ const api = {
     /** 从插件市场安装插件 */
     installFromMarket: (name: string): Promise<PluginInfo[]> =>
       ipcRenderer.invoke('plugins:market:install', name),
-    /** 从 GitHub 仓库地址安装插件 */
-    installFromGithub: (url: string): Promise<PluginInfo[]> =>
-      ipcRenderer.invoke('plugins:install-github', url),
+    /** 从 GitHub 仓库地址安装插件（force 为 true 时覆盖已安装版本） */
+    installFromGithub: (url: string, force = false): Promise<PluginInfo[]> =>
+      ipcRenderer.invoke('plugins:install-github', url, force),
+    /** 获取 Awesome Copilot 在线市场插件列表（主进程缓存 5 分钟，force 时强制刷新） */
+    listAwesome: (force = false): Promise<AwesomePluginInfo[]> =>
+      ipcRenderer.invoke('plugins:awesome:list', force),
+    /** 获取官方插件索引（精选 + 官方推荐，主进程内联数据） */
+    listOfficial: (): Promise<OfficialPluginEntry[]> =>
+      ipcRenderer.invoke('plugins:official:list'),
     /** 订阅插件列表 / 状态变化 */
     onChanged: (callback: (plugins: PluginInfo[]) => void): (() => void) => {
       const listener = (_event: Electron.IpcRendererEvent, plugins: PluginInfo[]): void =>

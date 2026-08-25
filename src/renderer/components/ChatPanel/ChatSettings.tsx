@@ -101,7 +101,7 @@ function AiSettingsTab({ onClose }: Props): JSX.Element {
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState<AIChatModel>('deepseek-chat')
   const [temperature, setTemperature] = useState(0.7)
-  const [maxTokens, setMaxTokens] = useState(4096)
+  const [maxTokens, setMaxTokens] = useState(8192)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 

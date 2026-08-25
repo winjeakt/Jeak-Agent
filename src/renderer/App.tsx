@@ -8,6 +8,7 @@ import TopBar from './components/TopBar/TopBar'
 import SearchBox from './components/TopBar/SearchBox'
 import ErrorBoundary from './components/ErrorBoundary'
 import Onboarding from './components/Onboarding'
+import ToastHost from './components/Toast/ToastHost'
 import { useI18nStore } from './stores/i18nStore'
 import { useLayoutStore } from './stores/layoutStore'
 import { useUIStore } from './stores/uiStore'
@@ -80,6 +81,7 @@ export default function App(): JSX.Element {
       </div>
       {showSettings && <ChatSettings onClose={closeSettings} />}
       <SearchBox />
+      <ToastHost />
     </ErrorBoundary>
   )
 }

@@ -1,10 +1,46 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AIChatModel } from '@shared/types'
 import { useChatStore } from '../../stores/chatStore'
-import type { ChatMessage } from '../../stores/chatStore'
+import type { ChatMessage, ToolCallRecord } from '../../stores/chatStore'
 import { useT } from '../../stores/i18nStore'
 import { useUIStore } from '../../stores/uiStore'
 import { MODEL_OPTIONS } from '../../constants/models'
+
+/** 截取工具返回结果的前 100 个字符作为摘要 */
+function summarizeResult(text?: string): string {
+  const s = (text ?? '').replace(/\s+/g, ' ').trim()
+  return s.length > 100 ? `${s.slice(0, 100)}…` : s
+}
+
+function ToolCallList({ toolCalls }: { toolCalls: ToolCallRecord[] }): JSX.Element {
+  const t = useT()
+  return (
+    <div className="chat-msg__tool-calls">
+      {toolCalls.map((tc, i) => {
+        if (tc.status === 'running') {
+          return (
+            <div key={i} className="chat-msg__tool-call chat-msg__tool-call--running">
+              <span className="chat-msg__tool-spinner" />
+              🔧 {t('chat.callingTool')}：{tc.name}…
+            </div>
+          )
+        }
+        if (tc.status === 'success') {
+          return (
+            <div key={i} className="chat-msg__tool-call chat-msg__tool-call--success">
+              ✅ {t('chat.toolResult')}：{summarizeResult(tc.result)}
+            </div>
+          )
+        }
+        return (
+          <div key={i} className="chat-msg__tool-call chat-msg__tool-call--error">
+            ❌ {t('chat.toolFailed')}：{tc.error}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 function MessageItem({ message }: { message: ChatMessage }): JSX.Element {
   const t = useT()
@@ -18,10 +54,8 @@ function MessageItem({ message }: { message: ChatMessage }): JSX.Element {
         >
           {message.content || (message.streaming ? t('chat.thinking') : '')}
         </pre>
-        {message.toolCall && (
-          <div className="chat-msg__tool-call">
-            🔧 {t('chat.callingTool')}：{message.toolCall}…
-          </div>
+        {message.toolCalls && message.toolCalls.length > 0 && (
+          <ToolCallList toolCalls={message.toolCalls} />
         )}
         {message.error && <div className="chat-msg__error">{message.error}</div>}
       </div>
@@ -30,6 +64,67 @@ function MessageItem({ message }: { message: ChatMessage }): JSX.Element {
 }
 
 
+
+function AvailableToolsIndicator(): JSX.Element | null {
+  const t = useT()
+  const [tools, setTools] = useState<string[]>([])
+  const [expanded, setExpanded] = useState(false)
+
+  const messages = useChatStore((s) => s.messages)
+  const runningTools = Array.from(
+    new Set(
+      messages.flatMap((m) =>
+        (m.toolCalls ?? [])
+          .filter((tc) => tc.status === 'running')
+          .map((tc) => tc.name)
+      )
+    )
+  )
+
+  useEffect(() => {
+    const refresh = (): void => {
+      void window.jeak.mcp.listTools().then((defs) => {
+        setTools(defs.map((d) => d.function.name))
+      })
+    }
+    refresh()
+    // 插件启用/禁用导致工具数量变化时，自动刷新
+    const unsub = window.jeak.plugins.onChanged(() => refresh())
+    return unsub
+  }, [])
+
+  if (tools.length === 0 && runningTools.length === 0) return null
+
+  return (
+    <div className="available-tools">
+      <button
+        className="available-tools__badge"
+        onClick={() => setExpanded((v) => !v)}
+        title={t('chat.availableTools')}
+      >
+        🔧 {t('chat.availableTools')} ({tools.length})
+      </button>
+      {runningTools.map((name) => (
+        <span key={name} className="available-tools__running">
+          <span className="chat-msg__tool-spinner" />
+          {name}
+        </span>
+      ))}
+      {expanded && (
+        <div className="available-tools__popover">
+          {tools.map((name) => (
+            <span
+              key={name}
+              className={`available-tools__chip${runningTools.includes(name) ? ' is-active' : ''}`}
+            >
+              {name}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function ChatPanel(): JSX.Element {
   const t = useT()
@@ -126,6 +221,8 @@ export default function ChatPanel(): JSX.Element {
           <MessageItem key={m.id} message={m} />
         ))}
       </div>
+
+      <AvailableToolsIndicator />
 
       <div className="chat-input">
         <textarea

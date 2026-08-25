@@ -16,6 +16,7 @@ import { PluginManager } from '../plugins/runtime/manager'
 import { TerminalService, registerTerminalIpc } from './services/TerminalService'
 import { registerWindowControls } from './windowControls'
 import { registerMenuIpc } from './menuIpc'
+import { registerMarketIpc } from './marketplaceApi'
 import { createTray, destroyTray } from './tray'
 import { createAppIcon } from './icon'
 import { setupAutoUpdater } from './updater'
@@ -46,7 +47,7 @@ const DEFAULT_AI_SETTINGS = {
   apiKey: '',
   model: 'deepseek-chat' as AIChatModel,
   temperature: 0.7,
-  maxTokens: 4096
+  maxTokens: 8192
 }
 
 /** 基于机器信息派生加密密钥 */
@@ -219,13 +220,18 @@ function registerAiIpc(): void {
       onDone: (id, aborted) => event.sender.send('ai:chat:done', { id, aborted }),
       onError: (id, message) => event.sender.send('ai:chat:error', { id, message }),
       onToolCall: (id, name, argsJson) =>
-        event.sender.send('ai:chat:tool-call', { id, name, argsJson })
+        event.sender.send('ai:chat:tool-call', { id, name, argsJson }),
+      onToolResult: (id, name, ok, result) =>
+        event.sender.send('ai:chat:tool-result', { id, name, ok, result })
     })
   })
 
   ipcMain.on('ai:chat:stop', (_event, id: string) => {
     aiService.stop(id)
   })
+
+  // 返回当前已加载的 MCP 工具列表（供渲染进程展示「可用工具」指示器）
+  ipcMain.handle('mcp:list-tools', () => pluginManager.listMCPTools())
 }
 
 /* ==================== 应用生命周期 ==================== */
@@ -252,6 +258,7 @@ app.whenReady().then(() => {
 
   registerSettingsIpc()
   registerAiIpc()
+  registerMarketIpc()
   registerTerminalIpc(() => terminalService)
   registerWindowControls(() => mainWindow)
   registerMenuIpc({

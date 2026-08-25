@@ -16,6 +16,8 @@ export interface AIServiceHandlers {
   onError: (id: string, message: string) => void
   /** 模型请求调用工具（function calling） */
   onToolCall?: (id: string, name: string, argsJson: string) => void
+  /** 工具执行完毕（ok=true 成功，否则失败）；result 为文本结果或错误信息 */
+  onToolResult?: (id: string, name: string, ok: boolean, result: string) => void
 }
 
 /** AIService 依赖注入（与 electron-store 解耦） */
@@ -171,16 +173,18 @@ export class AIService {
     messages.push({ role: 'assistant', content, tool_calls: toolCalls })
     for (const toolCall of toolCalls) {
       handlers.onToolCall?.(request.id, toolCall.function.name, toolCall.function.arguments)
-      const result = await this.executeTool(toolCall.function.name, toolCall.function.arguments)
-      messages.push({ role: 'tool', content: result, tool_call_id: toolCall.id })
+      const { ok, text } = await this.executeTool(toolCall.function.name, toolCall.function.arguments)
+      handlers.onToolResult?.(request.id, toolCall.function.name, ok, text)
+      // 发给模型的消息语义保持不变：成功推原始结果，失败推「工具调用失败: ...」
+      messages.push({ role: 'tool', content: ok ? text : `工具调用失败: ${text}`, tool_call_id: toolCall.id })
     }
     return false
   }
 
-  /** 调用 MCP 工具并把异常转为文本结果，避免中断对话 */
-  private async executeTool(name: string, argsJson: string): Promise<string> {
+  /** 调用 MCP 工具，返回结构化的成功/失败结果（异常不中断对话） */
+  private async executeTool(name: string, argsJson: string): Promise<{ ok: boolean; text: string }> {
     const caller = this.deps.callMCPTool
-    if (!caller) return '当前环境未启用 MCP 工具调用'
+    if (!caller) return { ok: false, text: '当前环境未启用 MCP 工具调用' }
     let args: unknown
     try {
       args = JSON.parse(argsJson || '{}')
@@ -188,9 +192,9 @@ export class AIService {
       args = {}
     }
     try {
-      return await caller(name, args)
+      return { ok: true, text: await caller(name, args) }
     } catch (error) {
-      return `工具调用失败: ${error instanceof Error ? error.message : String(error)}`
+      return { ok: false, text: error instanceof Error ? error.message : String(error) }
     }
   }
 

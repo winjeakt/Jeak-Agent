@@ -14,7 +14,7 @@ import type { Dirent } from 'fs'
 import { execFileSync } from 'child_process'
 import { tmpdir } from 'os'
 import { basename, dirname, join, relative, resolve, sep } from 'path'
-import type { PluginManifest, SkillInfo } from '../../shared/types'
+import type { AwesomePluginInfo, PluginManifest, SkillInfo } from '../../shared/types'
 
 /* ==================== 类型 ==================== */
 
@@ -58,7 +58,7 @@ interface GitHubItem {
 
 const INDEX_FILE = '.jeak-index.json'
 const GITHUB_HEADERS: Record<string, string> = {
-  'User-Agent': 'Jeak-Agent',
+  'User-Agent': 'jeak-agent',
   Accept: 'application/vnd.github+json'
 }
 
@@ -164,7 +164,7 @@ async function downloadRecursive(ref: GitHubRef, remotePath: string, localDir: s
 /** 下载整个仓库的 tarball（走 codeload.github.com，不消耗 Contents API 速率限制） */
 async function fetchTarball(ref: GitHubRef): Promise<Buffer> {
   const url = `https://codeload.github.com/${ref.owner}/${ref.repo}/tar.gz/${encodeURIComponent(ref.ref)}`
-  const res = await fetch(url, { headers: { 'User-Agent': 'Jeak-Agent' } })
+  const res = await fetch(url, { headers: { 'User-Agent': 'jeak-agent' } })
   if (!res.ok) throw new Error(`下载 tarball 失败 (${res.status})：${url}`)
   return Buffer.from(await res.arrayBuffer())
 }
@@ -441,7 +441,11 @@ export function loadBridgedSkills(pluginsRoot: string, pluginName: string): Skil
  * 4. 解析 skills 声明并写入 .jeak-index.json
  * 返回插件名。
  */
-export async function installFromGitHub(url: string, pluginsRoot: string): Promise<string> {
+export async function installFromGitHub(
+  url: string,
+  pluginsRoot: string,
+  force = false
+): Promise<string> {
   const ref = parseGitHubUrl(url)
   if (!ref.subpath) {
     throw new Error('URL 未指向插件子目录，请提供形如 .../tree/main/plugins/<插件名> 的地址')
@@ -462,10 +466,13 @@ export async function installFromGitHub(url: string, pluginsRoot: string): Promi
     const localManifest = JSON.parse(readFileSync(localManifestFile, 'utf-8')) as PluginManifest
     const name = validatePluginName(localManifest.name)
 
-    // 3. 冲突检查
+    // 3. 冲突检查（force 时允许覆盖：下载成功后替换旧目录，失败保留旧版）
     const targetDir = join(pluginsRoot, name)
     if (existsSync(targetDir)) {
-      throw new Error(`插件已安装：${name}`)
+      if (!force) {
+        throw new Error(`插件已安装：${name}`)
+      }
+      rmSync(targetDir, { recursive: true, force: true })
     }
 
     // 4. 原子移动到目标目录
@@ -483,4 +490,103 @@ export async function installFromGitHub(url: string, pluginsRoot: string): Promi
     rmSync(tmpDir, { recursive: true, force: true })
     throw error
   }
+}
+
+/* ==================== 在线市场列表（Awesome Copilot） ==================== */
+
+const AWESOME_COPILOT = {
+  owner: 'github',
+  repo: 'awesome-copilot',
+  ref: 'main',
+  dir: 'plugins'
+} as const
+
+/** 有限并发 map，避免瞬间打满 GitHub API 配额 */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length)
+  let next = 0
+  const workerCount = Math.min(limit, items.length)
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (next < items.length) {
+      const i = next++
+      results[i] = await fn(items[i], i)
+    }
+  })
+  await Promise.all(workers)
+  return results
+}
+
+/**
+ * 读取某插件目录下的 plugin.json 清单（仅取 name / description / version）。
+ * 优先 raw.githubusercontent.com（download_url，不计入 API 限额），失败时回退 Contents API。
+ * 两者都失败 -> 返回 null（调用方降级为「信息待完善」）。
+ */
+async function readPluginManifest(
+  folder: string
+): Promise<{ name?: string; description?: string; version?: string } | null> {
+  const rawUrl =
+    `https://raw.githubusercontent.com/${AWESOME_COPILOT.owner}/${AWESOME_COPILOT.repo}/` +
+    `${AWESOME_COPILOT.ref}/${AWESOME_COPILOT.dir}/${encodeURIComponent(folder)}/plugin.json`
+  try {
+    const manifest = await fetchJson<PluginManifest>(rawUrl)
+    if (manifest && typeof manifest === 'object') {
+      return { name: manifest.name, description: manifest.description, version: manifest.version }
+    }
+    return null
+  } catch {
+    // raw 不可达 -> 回退 Contents API
+  }
+
+  const ref: GitHubRef = {
+    owner: AWESOME_COPILOT.owner,
+    repo: AWESOME_COPILOT.repo,
+    ref: AWESOME_COPILOT.ref,
+    subpath: ''
+  }
+  try {
+    const buf = await fetchFileContent(ref, `${AWESOME_COPILOT.dir}/${folder}/plugin.json`)
+    const manifest = JSON.parse(buf.toString('utf-8')) as PluginManifest
+    if (manifest && typeof manifest === 'object') {
+      return { name: manifest.name, description: manifest.description, version: manifest.version }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 拉取 Awesome Copilot 在线市场的插件列表：
+ * 1. 通过 Contents API 读取 plugins 目录（1 次请求，5 分钟缓存由调用方负责）
+ * 2. 对每个子目录读 plugin.json（优先 raw，不计入限额），提取 name / description
+ * 3. 无法读取 plugin.json 的条目降级为「信息待完善」
+ */
+export async function listAwesomeCopilotPlugins(): Promise<AwesomePluginInfo[]> {
+  const apiUrl =
+    `https://api.github.com/repos/${AWESOME_COPILOT.owner}/${AWESOME_COPILOT.repo}/contents/` +
+    `${AWESOME_COPILOT.dir}?ref=${encodeURIComponent(AWESOME_COPILOT.ref)}`
+  const listing = await fetchJson<GitHubItem[]>(apiUrl)
+  if (!Array.isArray(listing)) throw new Error('市场列表返回格式异常')
+
+  const dirs = listing.filter((item) => item.type === 'dir')
+  return mapWithConcurrency(dirs, 5, async (dir) => {
+    const folder = dir.name
+    const manifest = await readPluginManifest(folder)
+    const name = manifest?.name?.trim() || folder
+    return {
+      folder,
+      name,
+      description: manifest?.description?.trim() ?? '',
+      version: manifest?.version?.trim() || undefined,
+      pending: !manifest || !manifest.name?.trim(),
+      source: 'Awesome Copilot',
+      url:
+        `https://github.com/${AWESOME_COPILOT.owner}/${AWESOME_COPILOT.repo}/tree/` +
+        `${AWESOME_COPILOT.ref}/${AWESOME_COPILOT.dir}/${encodeURIComponent(folder)}`
+    } as AwesomePluginInfo
+  })
 }

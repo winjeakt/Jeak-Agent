@@ -277,6 +277,42 @@ export interface MarketPluginInfo {
   installed: boolean
 }
 
+/** Awesome Copilot 在线市场插件条目（主进程 -> 渲染进程） */
+export interface AwesomePluginInfo {
+  /** 文件夹名（唯一标识，用于拼接 GitHub 安装地址） */
+  folder: string
+  /** 显示名称（plugin.json.name，缺失时回退为 folder） */
+  name: string
+  /** 描述（plugin.json.description，缺失时为空串） */
+  description: string
+  /** 是否「信息待完善」（未能读取/解析 plugin.json） */
+  pending: boolean
+  /** 来源标识（固定） */
+  source: 'Awesome Copilot'
+  /** 远程 plugin.json 声明的版本号（读取失败时为 undefined） */
+  version?: string
+  /** 完整 GitHub 安装地址 */
+  url: string
+}
+
+/** 官方插件索引条目（plugins-index.json，主进程 -> 渲染进程） */
+export interface OfficialPluginEntry {
+  /** 插件名称（唯一标识） */
+  name: string
+  /** 简短描述 */
+  description: string
+  /** 作者名 */
+  author: string
+  /** 插件 GitHub 仓库地址（用于「安装」） */
+  repo: string
+  /** 分类（如：代码工具 / Git / 调试） */
+  category: string
+  /** 是否官方认证 */
+  verified: boolean
+  /** 是否精选（在市场顶部「官方推荐」区块置顶展示） */
+  featured: boolean
+}
+
 /** 编辑器状态镜像（渲染进程 -> 主进程，供插件 editor API 读取） */
 export interface EditorStateSnapshot {
   /** 当前文件路径（null 表示未打开文件） */
