@@ -16,7 +16,8 @@ export default defineConfig({
       include: [
         'src/plugins/loader/**/*.ts',
         'src/plugins/marketplace/**/*.ts',
-        'src/main/services/AIService.ts'
+        'src/main/services/AIService.ts',
+        'src/shared/languageDetection.ts'
       ],
       reporter: ['text', 'json-summary', 'html'],
       reportsDirectory: 'coverage'

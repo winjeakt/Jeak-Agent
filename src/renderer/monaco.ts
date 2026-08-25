@@ -6,6 +6,7 @@ import cssWorker from 'monaco-editor/language/css/css.worker.js?worker'
 import htmlWorker from 'monaco-editor/language/html/html.worker.js?worker'
 import tsWorker from 'monaco-editor/language/typescript/ts.worker.js?worker'
 import type { EditorLanguage } from '@shared/types'
+import { detectLanguage as detectLanguageByPath } from '@shared/languageDetection'
 import { registerLuaLanguage } from './lua'
 import { registerCppLanguage } from './cpp'
 
@@ -246,11 +247,5 @@ registerCppLanguage()
  * @returns 语言 id，未匹配时返回 'plaintext'
  */
 export function detectLanguage(path: string | null | undefined): EditorLanguage {
-  if (!path) return 'plaintext'
-  const m = /\.([^.\\/]+)$/.exec(path)
-  if (!m) return 'plaintext'
-  const ext = '.' + m[1].toLowerCase()
-  const langs = monaco.languages.getLanguages()
-  const hit = langs.find((l) => l.extensions?.some((e) => e.toLowerCase() === ext))
-  return (hit?.id as EditorLanguage) ?? 'plaintext'
+  return detectLanguageByPath(path, monaco.languages.getLanguages()) as EditorLanguage
 }
