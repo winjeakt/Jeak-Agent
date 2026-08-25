@@ -86,7 +86,8 @@ jeak-agent/
 ├── plugins-market/                    # 示例插件
 │   ├── code-formatter/                # 代码格式化
 │   ├── git-helper/                    # Git 辅助
-│   └── eslint-integration/            # ESLint 集成
+│   ├── eslint-integration/            # ESLint 集成
+│   └── demo-tools/                    # 端到端演示（MCP 工具 + 技能）
 ├── ARCHITECTURE.md                    # 架构方案文档
 ├── electron.vite.config.ts
 ├── electron-builder.yml
@@ -103,8 +104,23 @@ jeak-agent/
 my-plugin/
 ├── plugin.json          # 插件清单（名称、版本、权限、入口、命令）
 ├── main.js              # 插件入口脚本
-└── SKILL.md             # 技能说明文档
+├── mcp.json             # MCP 服务器配置（暴露工具给 AI）
+├── server.js            # MCP server 实现（可选，供 mcp.json 调用）
+└── skills/              # AI 技能目录（可选）
+    └── my-skill/
+        └── SKILL.md     # 技能描述，注入 AI system 提示词
 ```
+
+MCP 工具与技能协同：`mcp.json` 声明的 server 由主进程拉起，`tools/list`
+枚举出的工具统一以 `插件名__工具名` 命名暴露给 AI（function calling）；`skills/`
+下的 SKILL.md 描述会注入 system 提示词，指引 AI 何时调用这些工具。
+
+### 端到端示例插件
+
+`plugins-market/demo-tools/` 是一个完整可运行的最小示例：声明 4 个 MCP 工具
+（`echo` / `add_numbers` / `get_current_time` / `list_directory`）与 1 个技能，
+零依赖、手写 MCP 协议。安装与验证方法见
+[`plugins-market/demo-tools/README.md`](./plugins-market/demo-tools/README.md)。
 
 ### plugin.json 示例
 

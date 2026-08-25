@@ -225,6 +225,13 @@ body {
   margin-top: 4px;
 }
 
+.chat-msg__tool-call {
+  font-size: 12px;
+  color: var(--accent);
+  margin-top: 4px;
+  opacity: 0.85;
+}
+
 .chat-input {
   flex-shrink: 0;
   border-top: 1px solid var(--border-color);
@@ -535,6 +542,28 @@ body {
   margin-right: auto;
 }
 
+.plugins__tabs {
+  display: flex;
+  gap: 2px;
+}
+
+.plugins__toolbar .plugins__tab {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  font-size: 11px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.plugins__toolbar .plugins__tab--active {
+  color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
 .plugins__toolbar button {
   background: transparent;
   border: 1px solid var(--border-color);
@@ -686,6 +715,24 @@ body {
 
 .plugin-card__uninstall:hover {
   background: rgba(241, 76, 76, 0.12);
+}
+
+.plugin-card__install {
+  background: var(--accent);
+  border: none;
+  color: #ffffff;
+  border-radius: 6px;
+  font-size: 11px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.plugin-card__install:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
 }
 
 /* ===== Phase 4：底部问题面板 ===== */

@@ -1,4 +1,10 @@
-import type { AIChatRequest } from '../../shared/types'
+import type {
+  AIChatMessage,
+  AIChatRequest,
+  AIToolCall,
+  AIToolDefinition,
+  SkillInfo
+} from '../../shared/types'
 
 /** 流式对话事件回调 */
 export interface AIServiceHandlers {
@@ -8,6 +14,8 @@ export interface AIServiceHandlers {
   onDone: (id: string, aborted?: boolean) => void
   /** 出错（如 API Key 无效、网络异常） */
   onError: (id: string, message: string) => void
+  /** 模型请求调用工具（function calling） */
+  onToolCall?: (id: string, name: string, argsJson: string) => void
 }
 
 /** AIService 依赖注入（与 electron-store 解耦） */
@@ -15,11 +23,20 @@ export interface AIServiceDeps {
   getApiKey: () => string
   getDefaultTemperature: () => number
   getDefaultMaxTokens: () => number
+  /** 当前可用的 MCP 工具（function calling） */
+  getMCPTools?: () => AIToolDefinition[]
+  /** 调用 MCP 工具，返回文本结果 */
+  callMCPTool?: (name: string, args: unknown) => Promise<string>
+  /** 当前可用的 Agent Skills（注入系统提示词） */
+  getSkills?: () => SkillInfo[]
 }
 
 /** DeepSeek 接口地址（可通过 JEAK_DEEPSEEK_ENDPOINT 环境变量覆盖，便于本地测试/自定义代理） */
 const DEEPSEEK_ENDPOINT =
   process.env.JEAK_DEEPSEEK_ENDPOINT || 'https://api.deepseek.com/chat/completions'
+
+/** 单次对话内工具调用最大轮数（防止模型陷入工具死循环） */
+const MAX_TOOL_ROUNDS = 8
 
 /**
  * 主进程 AI 服务：封装 DeepSeek Chat Completions 调用。
@@ -54,31 +71,13 @@ export class AIService {
     this.activeStreams.set(request.id, controller)
 
     try {
-      const response = await fetch(DEEPSEEK_ENDPOINT, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: request.model,
-          messages: request.messages,
-          stream: true,
-          temperature: request.temperature ?? this.deps.getDefaultTemperature(),
-          max_tokens: request.maxTokens ?? this.deps.getDefaultMaxTokens()
-        })
-      })
+      const tools = request.tools ?? this.deps.getMCPTools?.() ?? []
+      const messages = this.buildMessages(request.messages, this.deps.getSkills?.() ?? [])
 
-      if (!response.ok) {
-        const detail = await response.text().catch(() => '')
-        throw new Error(`DeepSeek API ${response.status}: ${detail.slice(0, 300)}`)
+      for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+        const finished = await this.runRound(request, messages, tools, handlers, controller, apiKey)
+        if (finished || controller.signal.aborted) break
       }
-      if (!response.body) {
-        throw new Error('DeepSeek API 未返回响应流')
-      }
-
-      await this.consumeStream(response.body, request.id, handlers)
       handlers.onDone(request.id)
     } catch (error) {
       if (controller.signal.aborted) {
@@ -115,15 +114,97 @@ export class AIService {
     })
   }
 
-  /** 逐块解析 SSE 并转发增量内容 */
+  /** 将 Agent Skills 注入系统提示词（追加到现有 system 消息或置于开头） */
+  private buildMessages(original: AIChatMessage[], skills: SkillInfo[]): AIChatMessage[] {
+    const messages = original.map((m) => ({ ...m }))
+    if (skills.length === 0) return messages
+
+    const skillBlock = skills.map((s) => `- ${s.name}: ${s.description || '（无描述）'}`).join('\n')
+    const hint = `\n\n# 可用技能（Agent Skills）\n插件提供了以下技能，当用户任务匹配时请优先使用：\n${skillBlock}`
+
+    const sysIndex = messages.findIndex((m) => m.role === 'system')
+    if (sysIndex >= 0) {
+      messages[sysIndex] = { ...messages[sysIndex], content: messages[sysIndex].content + hint }
+    } else {
+      messages.unshift({ role: 'system', content: hint.trimStart() })
+    }
+    return messages
+  }
+
+  /** 执行单轮对话；返回 true 表示已产出最终回复，false 表示执行了工具需继续 */
+  private async runRound(
+    request: AIChatRequest,
+    messages: AIChatMessage[],
+    tools: AIToolDefinition[],
+    handlers: AIServiceHandlers,
+    controller: AbortController,
+    apiKey: string
+  ): Promise<boolean> {
+    const response = await fetch(DEEPSEEK_ENDPOINT, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: request.model,
+        messages,
+        stream: true,
+        temperature: request.temperature ?? this.deps.getDefaultTemperature(),
+        max_tokens: request.maxTokens ?? this.deps.getDefaultMaxTokens(),
+        ...(tools.length > 0 ? { tools } : {})
+      })
+    })
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '')
+      throw new Error(`DeepSeek API ${response.status}: ${detail.slice(0, 300)}`)
+    }
+    if (!response.body) {
+      throw new Error('DeepSeek API 未返回响应流')
+    }
+
+    const { content, toolCalls } = await this.consumeStream(response.body, request.id, handlers)
+    if (toolCalls.length === 0) return true
+
+    messages.push({ role: 'assistant', content, tool_calls: toolCalls })
+    for (const toolCall of toolCalls) {
+      handlers.onToolCall?.(request.id, toolCall.function.name, toolCall.function.arguments)
+      const result = await this.executeTool(toolCall.function.name, toolCall.function.arguments)
+      messages.push({ role: 'tool', content: result, tool_call_id: toolCall.id })
+    }
+    return false
+  }
+
+  /** 调用 MCP 工具并把异常转为文本结果，避免中断对话 */
+  private async executeTool(name: string, argsJson: string): Promise<string> {
+    const caller = this.deps.callMCPTool
+    if (!caller) return '当前环境未启用 MCP 工具调用'
+    let args: unknown
+    try {
+      args = JSON.parse(argsJson || '{}')
+    } catch {
+      args = {}
+    }
+    try {
+      return await caller(name, args)
+    } catch (error) {
+      return `工具调用失败: ${error instanceof Error ? error.message : String(error)}`
+    }
+  }
+
+  /** 逐块解析 SSE：累积正文内容与工具调用分片 */
   private async consumeStream(
     body: ReadableStream<Uint8Array>,
     id: string,
     handlers: AIServiceHandlers
-  ): Promise<void> {
+  ): Promise<{ content: string; toolCalls: AIToolCall[] }> {
     const reader = body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
+    let content = ''
+    const toolCalls: AIToolCall[] = []
 
     for (;;) {
       const { done, value } = await reader.read()
@@ -142,11 +223,16 @@ export class AIService {
           if (!data || data === '[DONE]') continue
           try {
             const json = JSON.parse(data) as {
-              choices?: Array<{ delta?: { content?: string } }>
+              choices?: Array<{ delta?: { content?: string; tool_calls?: DeltaToolCall[] } }>
             }
-            const delta = json.choices?.[0]?.delta?.content
-            if (typeof delta === 'string' && delta.length > 0) {
-              handlers.onDelta(id, delta)
+            const delta = json.choices?.[0]?.delta
+            if (!delta) continue
+            if (typeof delta.content === 'string' && delta.content.length > 0) {
+              content += delta.content
+              handlers.onDelta(id, delta.content)
+            }
+            if (Array.isArray(delta.tool_calls)) {
+              this.accumulateToolCalls(toolCalls, delta.tool_calls)
             }
           } catch {
             // 忽略非 JSON 行
@@ -154,5 +240,28 @@ export class AIService {
         }
       }
     }
+    return { content, toolCalls }
   }
+
+  /** 累积流式工具调用分片（按 index 分组，拼接 id/name/arguments） */
+  private accumulateToolCalls(acc: AIToolCall[], deltas: DeltaToolCall[]): void {
+    for (const tc of deltas) {
+      const index = typeof tc.index === 'number' ? tc.index : 0
+      if (!acc[index]) {
+        acc[index] = { id: '', type: 'function', function: { name: '', arguments: '' } }
+      }
+      if (typeof tc.id === 'string' && tc.id) acc[index].id = tc.id
+      if (tc.type === 'function') acc[index].type = 'function'
+      if (tc.function?.name) acc[index].function.name = tc.function.name
+      if (tc.function?.arguments) acc[index].function.arguments += tc.function.arguments
+    }
+  }
+}
+
+/** 流式 delta 中的工具调用分片（宽松解析） */
+interface DeltaToolCall {
+  index?: number
+  id?: string
+  type?: string
+  function?: { name?: string; arguments?: string }
 }

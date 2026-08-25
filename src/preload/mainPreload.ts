@@ -11,6 +11,7 @@ import type {
   FileSaveResult,
   FileTreeNode,
   FolderOpenResult,
+  MarketPluginInfo,
   PluginInfo,
   ShellKind,
   UpdateState,
@@ -102,6 +103,19 @@ const api = {
       return () => {
         ipcRenderer.removeListener('ai:chat:error', listener)
       }
+    },
+    /** 订阅工具调用事件（function calling） */
+    onToolCall: (
+      callback: (payload: { id: string; name: string; argsJson: string }) => void
+    ): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: { id: string; name: string; argsJson: string }
+      ): void => callback(payload)
+      ipcRenderer.on('ai:chat:tool-call', listener)
+      return () => {
+        ipcRenderer.removeListener('ai:chat:tool-call', listener)
+      }
     }
   },
   /** 编辑器状态同步与插件写入（Phase 3） */
@@ -150,6 +164,14 @@ const api = {
     installLocal: (): Promise<PluginInfo[]> => ipcRenderer.invoke('plugins:install-local'),
     /** 创建新插件模板 */
     create: (name: string): Promise<PluginInfo[]> => ipcRenderer.invoke('plugins:create', name),
+    /** 获取插件市场列表（含是否已安装标记） */
+    listMarket: (): Promise<MarketPluginInfo[]> => ipcRenderer.invoke('plugins:market:list'),
+    /** 从插件市场安装插件 */
+    installFromMarket: (name: string): Promise<PluginInfo[]> =>
+      ipcRenderer.invoke('plugins:market:install', name),
+    /** 从 GitHub 仓库地址安装插件 */
+    installFromGithub: (url: string): Promise<PluginInfo[]> =>
+      ipcRenderer.invoke('plugins:install-github', url),
     /** 订阅插件列表 / 状态变化 */
     onChanged: (callback: (plugins: PluginInfo[]) => void): (() => void) => {
       const listener = (_event: Electron.IpcRendererEvent, plugins: PluginInfo[]): void =>

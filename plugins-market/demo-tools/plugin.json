@@ -1,0 +1,17 @@
+{
+  "$schema": "https://jeak.dev/schemas/plugin-1.0.json",
+  "name": "demo-tools",
+  "version": "1.0.0",
+  "description": "端到端演示插件：声明 MCP 工具（回显/计算/时间/目录列举）与技能，验证 AI function calling 闭环。",
+  "author": "jeak",
+  "license": "MIT",
+  "keywords": ["demo", "mcp", "tools", "skills"],
+  "entry": "main.js",
+  "permissions": ["ai:chat"],
+  "contributes": {
+    "commands": [
+      { "command": "demo-tools.hello", "title": "演示：打招呼" },
+      { "command": "demo-tools.call-echo", "title": "演示：AI 调用 MCP echo 工具" }
+    ]
+  }
+}

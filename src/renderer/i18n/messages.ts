@@ -21,6 +21,7 @@ export const messages = {
     'chat.you': '你',
     'chat.thinking': '正在思考…',
     'chat.noKeyHint': '⚠ 未配置 API Key',
+    'chat.callingTool': '正在调用工具',
     'chat.settings': '设置',
     'chat.model': '选择模型',
     'settings.title': '设置中心',
@@ -204,7 +205,9 @@ export const messages = {
     'plugins.create.fail': '创建插件失败：{error}',
     'plugins.market.empty': '暂无可用插件',
     'plugins.market.install': '安装',
-    'plugins.market.installed': '已安装'
+    'plugins.market.installed': '已安装',
+    'plugins.tab.installed': '已安装',
+    'plugins.tab.market': '市场'
   },
   en: {
     'app.title': 'Jeak Agent',
@@ -222,6 +225,7 @@ export const messages = {
     'chat.you': 'You',
     'chat.thinking': 'Thinking…',
     'chat.noKeyHint': '⚠ API Key not configured',
+    'chat.callingTool': 'Calling tool',
     'chat.settings': 'Settings',
     'chat.model': 'Select model',
     'settings.title': 'Settings',
@@ -405,7 +409,9 @@ export const messages = {
     'plugins.create.fail': 'Failed to create plugin: {error}',
     'plugins.market.empty': 'No plugins available',
     'plugins.market.install': 'Install',
-    'plugins.market.installed': 'Installed'
+    'plugins.market.installed': 'Installed',
+    'plugins.tab.installed': 'Installed',
+    'plugins.tab.market': 'Market'
   }
 } as const
 

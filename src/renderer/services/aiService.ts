@@ -57,6 +57,7 @@ export interface AIChatEvents {
   onDelta?: (payload: { id: string; delta: string }) => void
   onDone?: (payload: { id: string; aborted?: boolean }) => void
   onError?: (payload: { id: string; message: string }) => void
+  onToolCall?: (payload: { id: string; name: string; argsJson: string }) => void
 }
 
 /**
@@ -80,6 +81,7 @@ export const aiService = {
     if (events.onDelta) unsubscribes.push(window.jeak.ai.onDelta(events.onDelta))
     if (events.onDone) unsubscribes.push(window.jeak.ai.onDone(events.onDone))
     if (events.onError) unsubscribes.push(window.jeak.ai.onError(events.onError))
+    if (events.onToolCall) unsubscribes.push(window.jeak.ai.onToolCall(events.onToolCall))
     return () => {
       unsubscribes.forEach((unsub) => unsub())
     }

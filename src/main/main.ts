@@ -85,15 +85,19 @@ const store = createStore()
 
 /* ==================== AI 服务（DeepSeek 流式） ==================== */
 
-const aiService = new AIService({
+const aiService: AIService = new AIService({
   getApiKey: () => (store.get('ai') ?? DEFAULT_AI_SETTINGS).apiKey,
   getDefaultTemperature: () => (store.get('ai') ?? DEFAULT_AI_SETTINGS).temperature,
-  getDefaultMaxTokens: () => (store.get('ai') ?? DEFAULT_AI_SETTINGS).maxTokens
+  getDefaultMaxTokens: () => (store.get('ai') ?? DEFAULT_AI_SETTINGS).maxTokens,
+  // MCP 工具（function calling）：惰性引用 pluginManager，运行时已初始化
+  getMCPTools: () => pluginManager.listMCPTools(),
+  callMCPTool: (name, args) => pluginManager.callMCPTool(name, args),
+  getSkills: () => pluginManager.listSkills()
 })
 
 /* ==================== Phase 3：插件系统 ==================== */
 
-const pluginManager = new PluginManager({
+const pluginManager: PluginManager = new PluginManager({
   aiService,
   getMainWindow: () => mainWindow,
   getSettingsStore: () => store
@@ -213,7 +217,9 @@ function registerAiIpc(): void {
     void aiService.chat(request, {
       onDelta: (id, delta) => event.sender.send('ai:chat:delta', { id, delta }),
       onDone: (id, aborted) => event.sender.send('ai:chat:done', { id, aborted }),
-      onError: (id, message) => event.sender.send('ai:chat:error', { id, message })
+      onError: (id, message) => event.sender.send('ai:chat:error', { id, message }),
+      onToolCall: (id, name, argsJson) =>
+        event.sender.send('ai:chat:tool-call', { id, name, argsJson })
     })
   })
 

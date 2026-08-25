@@ -18,6 +18,11 @@ function MessageItem({ message }: { message: ChatMessage }): JSX.Element {
         >
           {message.content || (message.streaming ? t('chat.thinking') : '')}
         </pre>
+        {message.toolCall && (
+          <div className="chat-msg__tool-call">
+            🔧 {t('chat.callingTool')}：{message.toolCall}…
+          </div>
+        )}
         {message.error && <div className="chat-msg__error">{message.error}</div>}
       </div>
     </div>

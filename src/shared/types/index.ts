@@ -26,13 +26,39 @@ export interface AppInfo {
 
 /* ==================== Phase 2：AI 能力 ==================== */
 
-/** 对话角色 */
-export type ChatRole = 'system' | 'user' | 'assistant'
+/** 对话角色（tool 用于 function calling 的工具返回消息） */
+export type ChatRole = 'system' | 'user' | 'assistant' | 'tool'
 
-/** 发送给 AI 的消息（仅角色 + 内容） */
+/** 发送给 AI 的消息（角色 + 内容 + 可选工具调用信息） */
 export interface AIChatMessage {
   role: ChatRole
   content: string
+  /** assistant 消息可能携带：请求调用外部工具 */
+  tool_calls?: AIToolCall[]
+  /** tool 消息必填：对应某次 tool_call 的返回 */
+  tool_call_id?: string
+}
+
+/** 模型请求调用的工具（OpenAI function calling 格式） */
+export interface AIToolCall {
+  id: string
+  type: 'function'
+  function: {
+    name: string
+    /** JSON 字符串形式的调用参数 */
+    arguments: string
+  }
+}
+
+/** 可供模型调用的工具定义（MCP tools 转换而来，OpenAI 格式） */
+export interface AIToolDefinition {
+  type: 'function'
+  function: {
+    name: string
+    description: string
+    /** JSON Schema 参数 */
+    parameters: Record<string, unknown>
+  }
 }
 
 /** 支持的 DeepSeek 模型 */
@@ -46,6 +72,8 @@ export interface AIChatRequest {
   model: AIChatModel
   temperature?: number
   maxTokens?: number
+  /** 可供模型调用的工具（MCP tools 转换而来） */
+  tools?: AIToolDefinition[]
 }
 
 /** AI 服务配置 */
@@ -137,28 +165,84 @@ export interface PluginCommand {
   title: string
 }
 
+/** Agent Plugins 1.0 作者对象 */
+export interface PluginAuthor {
+  name?: string
+  email?: string
+  url?: string
+}
+
 /**
  * Agent Plugins 1.0 插件清单（plugin.json）规范。
- * 字段均为白名单：未列出的字段在加载时被忽略（不传递到沙箱）。
+ * 顶层字段遵循官方 schema；命令型插件的能力声明放在客户端扩展命名空间
+ * `extensions["dev.jeak-agent"]` 下（同时向后兼容旧版顶层字段）。
+ * 未列出的字段在加载时被忽略（不传递到沙箱）。
  */
 export interface PluginManifest {
-  /** 规范地址，如 https://jeak.dev/schemas/plugin-1.0.json */
+  /** 规范地址，如 https://agent-plugins.org/schemas/1.0.0/plugin.schema.json */
   $schema?: string
-  /** 插件名：kebab-case，全局唯一 */
+  /** 插件名：官方规则（小写字母/数字/点/连字符，首尾字母数字，禁 .. 与 --） */
   name: string
   /** 语义化版本号 x.y.z */
   version: string
   description?: string
-  author?: string
+  /** 作者（官方为对象，兼容旧版字符串） */
+  author?: PluginAuthor
+  homepage?: string
+  repository?: string
   license?: string
-  /** 入口脚本文件名（默认 plugin.js），仅允许插件目录内的文件 */
+  keywords?: string[]
+  /** 客户端扩展（反向域名 key -> 任意值） */
+  extensions?: Record<string, unknown>
+  /** [兼容 GitHub Copilot 插件格式] 技能目录（相对插件目录，字符串或字符串数组） */
+  skills?: string | string[]
+  /** [兼容 GitHub Copilot 插件格式] agent 目录（相对插件目录，字符串或字符串数组） */
+  agents?: string | string[]
+  /** [Jeak 扩展] 入口脚本文件名（命令型插件，仅允许插件目录内 .js） */
   entry?: string
-  /** 申请的权限白名单 */
+  /** [Jeak 扩展] 申请的权限白名单 */
   permissions: PluginPermission[]
-  /** 插件贡献点（命令等） */
+  /** [Jeak 扩展] 插件贡献点（命令等） */
   contributes?: {
     commands?: PluginCommand[]
   }
+}
+
+/* ==================== Agent Plugins 1.0：mcp.json & skills ==================== */
+
+/** mcp.json 中的单个 server 配置（stdio / streamable-http 两种传输） */
+export type MCPServerConfig =
+  | {
+      type: 'stdio'
+      /** 启动命令（不展开占位符） */
+      command: string
+      args?: string[]
+      env?: Record<string, string>
+      cwd?: string
+    }
+  | {
+      type: 'streamable-http'
+      /** MCP streamable HTTP 端点 */
+      url: string
+      headers?: Record<string, string>
+    }
+
+/** mcp.json 顶层结构 */
+export interface MCPManifest {
+  $schema?: string
+  mcpServers: Record<string, MCPServerConfig>
+}
+
+/** Agent Plugins 1.0 skills 目录中的单个 skill */
+export interface SkillInfo {
+  /** skill 名（来自 SKILL.md frontmatter 的 name，缺省为目录名） */
+  name: string
+  /** skill 描述（来自 frontmatter 的 description） */
+  description: string
+  /** skill 目录绝对路径 */
+  path: string
+  /** SKILL.md 正文（去掉 frontmatter） */
+  body: string
 }
 
 /** 插件运行状态 */
@@ -180,6 +264,17 @@ export interface PluginInfo {
   enabled: boolean
   status: PluginStatus
   error?: string
+}
+
+/** 插件市场条目（插件市场面板展示，含是否已安装标记） */
+export interface MarketPluginInfo {
+  name: string
+  version: string
+  description: string
+  author: string
+  license: string
+  /** 是否已安装到本地插件目录 */
+  installed: boolean
 }
 
 /** 编辑器状态镜像（渲染进程 -> 主进程，供插件 editor API 读取） */

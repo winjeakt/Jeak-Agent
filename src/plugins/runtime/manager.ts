@@ -1,12 +1,27 @@
-import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { basename, dirname, join, resolve } from 'path'
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'fs'
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
 import type Store from 'electron-store'
 import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron'
-import type { AppSettings, EditorStateSnapshot, PluginInfo, ProjectInfo } from '../../shared/types'
+import type {
+  AIToolDefinition,
+  AppSettings,
+  EditorStateSnapshot,
+  MarketPluginInfo,
+  PluginInfo,
+  PluginManifest,
+  ProjectInfo,
+  SkillInfo
+} from '../../shared/types'
 import type { AIService } from '../../main/services/AIService'
+import { MCPClientManager } from '../../main/mcp/MCPClientManager'
 import { discoverPluginDirectories } from '../loader/discovery'
 import { loadPlugin, type LoadedPlugin } from '../loader/loader'
+import {
+  installFromGitHub as importPluginFromGitHub,
+  loadBridgedSkills,
+  removeBridgeEntry
+} from '../marketplace/marketplace-importer'
 import { PluginSandbox } from './sandbox'
 import { PluginSecurityContext } from './security'
 import {
@@ -43,6 +58,10 @@ export class PluginManager {
   private editorState: EditorStateSnapshot | null = null
   private pluginsRoot = ''
   private ipcRegistered = false
+  /** MCP servers 连接管理（mcp.json） */
+  private mcp = new MCPClientManager((name) => this.getPluginDataDir(name))
+  /** 已启用插件的 skills（插件名 -> skills） */
+  private skills = new Map<string, SkillInfo[]>()
 
   constructor(private readonly deps: PluginManagerDeps) {}
 
@@ -62,6 +81,21 @@ export class PluginManager {
     return [...this.infos.values()].sort((a, b) => a.name.localeCompare(b.name))
   }
 
+  /** 已启用插件的全部 MCP 工具（供 AI function calling 使用） */
+  listMCPTools(): AIToolDefinition[] {
+    return this.mcp.listTools()
+  }
+
+  /** 调用 MCP 工具（按 AI 侧工具名） */
+  async callMCPTool(name: string, args: unknown): Promise<string> {
+    return this.mcp.callTool(name, args)
+  }
+
+  /** 已启用插件的全部 skills（供注入 AI 上下文使用） */
+  listSkills(): SkillInfo[] {
+    return [...this.skills.values()].flat()
+  }
+
   async setEnabled(name: string, enabled: boolean): Promise<PluginInfo[]> {
     const info = this.infos.get(name)
     if (!info) throw new Error(`插件不存在: ${name}`)
@@ -73,10 +107,10 @@ export class PluginManager {
     else disabled.add(name)
     store.set('plugins', { disabled: [...disabled] })
 
-    if (enabled && !this.sandboxes.has(name)) {
-      await this.startSandboxByInfo(info)
-    } else if (!enabled && this.sandboxes.has(name)) {
-      this.destroySandbox(name)
+    if (enabled) {
+      await this.startPluginByInfo(info)
+    } else {
+      await this.stopPlugin(name)
     }
 
     await this.refreshInfo(name)
@@ -101,14 +135,16 @@ export class PluginManager {
       throw new Error(`拒绝卸载：目录不在插件根目录内（${targetDir}）`)
     }
 
-    // 1. 销毁沙箱
-    this.destroySandbox(name)
+    // 1. 停止插件（沙箱 + MCP + skills）
+    await this.stopPlugin(name)
     // 2. 从禁用列表移除
     const store = this.deps.getSettingsStore()
     const current = store.get('plugins') ?? { disabled: [] }
     store.set('plugins', { disabled: current.disabled.filter((n) => n !== name) })
     // 3. 删除目录
     rmSync(targetDir, { recursive: true, force: true })
+    // 3.5 清理 .jeak-index.json 中的桥接条目
+    removeBridgeEntry(pluginsRoot, name)
     // 4. 移除信息
     this.infos.delete(name)
 
@@ -137,6 +173,73 @@ export class PluginManager {
 
     mkdirSync(pluginsRoot, { recursive: true })
     cpSync(sourceDir, targetDir, { recursive: true })
+    await this.refresh()
+    return this.list()
+  }
+
+  /** 插件市场目录：dev 时为项目内 plugins-market/，打包后位于 asar 内 */
+  private getMarketDir(): string {
+    return join(app.getAppPath(), 'plugins-market')
+  }
+
+  /** 列出插件市场（plugins-market/ 内置插件），标注是否已安装 */
+  listMarket(): MarketPluginInfo[] {
+    const marketDir = this.getMarketDir()
+    if (!existsSync(marketDir)) return []
+    const installed = new Set(this.infos.keys())
+    const entries = (() => {
+      try {
+        return readdirSync(marketDir, { withFileTypes: true })
+      } catch {
+        return []
+      }
+    })()
+    const result: MarketPluginInfo[] = []
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue
+      const pluginJson = join(marketDir, entry.name, 'plugin.json')
+      if (!existsSync(pluginJson)) continue
+      try {
+        const manifest = JSON.parse(readFileSync(pluginJson, 'utf-8')) as PluginManifest
+        const authorRaw = manifest.author as string | { name?: string } | undefined
+        const author = typeof authorRaw === 'string' ? authorRaw : (authorRaw?.name ?? '')
+        result.push({
+          name: manifest.name,
+          version: manifest.version,
+          description: manifest.description ?? '',
+          author,
+          license: manifest.license ?? '',
+          installed: installed.has(manifest.name)
+        })
+      } catch {
+        // 跳过无效插件
+      }
+    }
+    return result.sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  /** 从插件市场安装插件：复制到本地插件目录并刷新 */
+  async installFromMarket(name: string): Promise<PluginInfo[]> {
+    const pluginsRoot = resolve(this.pluginsRoot || discoverPluginDirectories().pluginsRoot)
+    const marketDir = this.getMarketDir()
+    const sourceDir = join(marketDir, name)
+    if (!existsSync(join(sourceDir, 'plugin.json'))) {
+      throw new Error(`市场中不存在插件: ${name}`)
+    }
+    const targetDir = join(pluginsRoot, name)
+    if (existsSync(targetDir)) {
+      throw new Error(`插件已安装: ${name}`)
+    }
+    mkdirSync(pluginsRoot, { recursive: true })
+    cpSync(sourceDir, targetDir, { recursive: true })
+    await this.refresh()
+    return this.list()
+  }
+
+  /** 从 GitHub 仓库地址安装插件：下载官方插件到本地并建立 skills 桥接索引 */
+  async installFromGithub(url: string): Promise<PluginInfo[]> {
+    const pluginsRoot = resolve(this.pluginsRoot || discoverPluginDirectories().pluginsRoot)
+    await importPluginFromGitHub(String(url), pluginsRoot)
     await this.refresh()
     return this.list()
   }
@@ -201,11 +304,13 @@ export class PluginManager {
     throw new Error(`命令 ${command} 未由任何已启用插件注册`)
   }
 
-  /** 应用退出时销毁所有沙箱 */
+  /** 应用退出时销毁所有沙箱与 MCP 连接 */
   async dispose(): Promise<void> {
     for (const name of [...this.sandboxes.keys()]) {
       this.destroySandbox(name)
     }
+    this.skills.clear()
+    await this.mcp.dispose()
   }
 
   /* ==================== 扫描与生命周期 ==================== */
@@ -218,7 +323,7 @@ export class PluginManager {
     // 移除已不存在目录的插件
     for (const [name, info] of [...this.infos]) {
       if (!directories.includes(info.path)) {
-        this.destroySandbox(name)
+        await this.stopPlugin(name)
         this.infos.delete(name)
       }
     }
@@ -239,8 +344,8 @@ export class PluginManager {
             info.status = enabled && this.sandboxes.has(name) ? 'ready' : enabled ? 'error' : 'disabled'
             if (info.status === 'error' && this.sandboxes.has(name)) info.status = 'ready'
           }
-          if (enabled && !this.sandboxes.has(name)) await this.startSandbox(loaded)
-          if (!enabled && this.sandboxes.has(name)) this.destroySandbox(name)
+          if (enabled) await this.startPlugin(loaded)
+          else await this.stopPlugin(name)
           continue
         }
         // 新插件
@@ -249,7 +354,7 @@ export class PluginManager {
           name,
           version: loaded.manifest.version,
           description: loaded.manifest.description ?? '',
-          author: loaded.manifest.author ?? '',
+          author: loaded.manifest.author?.name ?? '',
           license: loaded.manifest.license ?? '',
           path: dir,
           permissions: loaded.manifest.permissions,
@@ -259,7 +364,7 @@ export class PluginManager {
         }
         this.infos.set(name, info)
         if (enabled) {
-          await this.startSandbox(loaded)
+          await this.startPlugin(loaded)
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
@@ -283,14 +388,60 @@ export class PluginManager {
     this.broadcast()
   }
 
-  private async startSandboxByInfo(info: PluginInfo): Promise<void> {
+  private async startPluginByInfo(info: PluginInfo): Promise<void> {
     try {
       const loaded = loadPlugin(info.path)
-      await this.startSandbox(loaded)
+      await this.startPlugin(loaded)
     } catch (error) {
       info.status = 'error'
       info.error = error instanceof Error ? error.message : String(error)
     }
+  }
+
+  /** 启动一个插件：命令型沙箱 + MCP servers + skills（纯声明型插件只连 MCP/加载 skills） */
+  private async startPlugin(loaded: LoadedPlugin): Promise<void> {
+    const name = loaded.manifest.name
+    if (loaded.manifest.entry) {
+      await this.startSandbox(loaded)
+    }
+    if (Object.keys(loaded.mcpServers).length > 0) {
+      await this.mcp.connectPlugin(name, loaded.path, loaded.mcpServers)
+    }
+    // 合并约定式扫描的 skills 与官方 extensions.*.skills 桥接的 skills（按 path 去重）
+    const bridged = this.pluginsRoot ? loadBridgedSkills(this.pluginsRoot, name) : []
+    const skills = this.dedupeSkills([...loaded.skills, ...bridged])
+    if (skills.length > 0) {
+      this.skills.set(name, skills)
+    }
+    const info = this.infos.get(name)
+    if (info && !loaded.manifest.entry) {
+      info.status = 'ready'
+      info.error = undefined
+    }
+  }
+
+  /** 按 skill 目录路径去重（约定式与桥接可能指向同一目录） */
+  private dedupeSkills(skills: SkillInfo[]): SkillInfo[] {
+    const seen = new Set<string>()
+    const result: SkillInfo[] = []
+    for (const skill of skills) {
+      if (seen.has(skill.path)) continue
+      seen.add(skill.path)
+      result.push(skill)
+    }
+    return result
+  }
+
+  /** 停止一个插件：销毁沙箱 + 断开 MCP + 移除 skills */
+  private async stopPlugin(name: string): Promise<void> {
+    this.destroySandbox(name)
+    await this.mcp.disconnectPlugin(name)
+    this.skills.delete(name)
+  }
+
+  /** 插件数据目录（PLUGIN_DATA） */
+  private getPluginDataDir(name: string): string {
+    return join(app.getPath('userData'), 'plugin-data', name)
   }
 
   private async startSandbox(loaded: LoadedPlugin): Promise<void> {
@@ -401,6 +552,13 @@ export class PluginManager {
     })
     ipcMain.handle('plugins:create', async (_e, name: string) => {
       return this.create(String(name))
+    })
+    ipcMain.handle('plugins:market:list', () => this.listMarket())
+    ipcMain.handle('plugins:market:install', async (_e, name: string) => {
+      return this.installFromMarket(String(name))
+    })
+    ipcMain.handle('plugins:install-github', async (_e, url: string) => {
+      return this.installFromGithub(String(url))
     })
 
     // 编辑器状态镜像：主窗口渲染进程实时同步（供插件 editor API 读取）

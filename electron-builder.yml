@@ -13,6 +13,7 @@ publish:
 files:
   - out/**/*
   - package.json
+  - plugins-market/**/*
 
 asar: true
 npmRebuild: false

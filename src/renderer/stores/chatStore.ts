@@ -10,6 +10,8 @@ export interface ChatMessage {
   timestamp: number
   streaming?: boolean
   error?: string
+  /** 当前正在调用的 MCP 工具名（function calling 展示） */
+  toolCall?: string
 }
 
 function genId(): string {
@@ -41,19 +43,28 @@ function ensureListeners(): void {
   aiService.subscribe({
     onDelta: ({ id, delta }) => {
       useChatStore.setState((s) => ({
-        messages: s.messages.map((m) => (m.id === id ? { ...m, content: m.content + delta } : m))
+        messages: s.messages.map((m) =>
+          m.id === id ? { ...m, content: m.content + delta, toolCall: undefined } : m
+        )
       }))
     },
     onDone: ({ id }) => {
       useChatStore.setState((s) => ({
         isStreaming: false,
-        messages: s.messages.map((m) => (m.id === id ? { ...m, streaming: false } : m))
+        messages: s.messages.map((m) =>
+          m.id === id ? { ...m, streaming: false, toolCall: undefined } : m
+        )
       }))
     },
     onError: ({ id, message }) => {
       useChatStore.setState((s) => ({
         isStreaming: false,
         messages: s.messages.map((m) => (m.id === id ? { ...m, streaming: false, error: message } : m))
+      }))
+    },
+    onToolCall: ({ id, name }) => {
+      useChatStore.setState((s) => ({
+        messages: s.messages.map((m) => (m.id === id ? { ...m, toolCall: name } : m))
       }))
     }
   })

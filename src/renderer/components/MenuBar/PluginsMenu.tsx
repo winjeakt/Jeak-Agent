@@ -4,8 +4,6 @@ import { usePluginStore } from '../../stores/pluginStore'
 import { useUIStore } from '../../stores/uiStore'
 import type { MenuItem } from './types'
 
-const MARKET_URL = 'https://github.com/winjeakt/Jeak-Agent/releases'
-
 /** "插件"菜单：管理 / 安装 / 已安装列表 / 更新 / 开发 */
 export function usePluginsMenuItems(): MenuItem[] {
   const t = useT()
@@ -14,6 +12,7 @@ export function usePluginsMenuItems(): MenuItem[] {
   const toggle = usePluginStore((s) => s.toggle)
   const installLocal = usePluginStore((s) => s.installLocal)
   const create = usePluginStore((s) => s.create)
+  const setActiveTab = usePluginStore((s) => s.setActiveTab)
   const openSettings = useUIStore((s) => s.openSettings)
 
   useEffect(() => {
@@ -51,7 +50,14 @@ export function usePluginsMenuItems(): MenuItem[] {
 
   return [
     { id: 'manage', label: t('menu.plugins.manage'), shortcut: 'Ctrl+Shift+X', onClick: () => openSettings('plugins') },
-    { id: 'install-market', label: t('menu.plugins.market'), onClick: () => void window.jeak.shell.openExternal(MARKET_URL) },
+    {
+      id: 'install-market',
+      label: t('menu.plugins.market'),
+      onClick: () => {
+        setActiveTab('market')
+        openSettings('plugins')
+      }
+    },
     { id: 'install-local', label: t('menu.plugins.installLocal'), onClick: handleInstallLocal },
     { id: 'sep-1', label: '', separator: true },
     { id: 'installed', label: t('menu.plugins.installed'), submenu: installedSubmenu },
