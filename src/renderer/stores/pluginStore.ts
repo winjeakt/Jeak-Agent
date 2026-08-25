@@ -96,7 +96,7 @@ export const usePluginStore = create<PluginState>((set) => ({
     try {
       const officialPlugins = await window.jeak.plugins.listOfficial()
       set({ officialPlugins })
-    } catch (error) {
+    } catch {
       // 官方索引为本地内联数据，几乎不会失败；失败时保持空列表
       set({ officialPlugins: [] })
     }

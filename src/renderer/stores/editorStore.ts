@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { EditorLanguage } from '@shared/types'
+import { detectLanguage } from '../monaco'
 
 interface EditorState {
   /** 当前打开文件的路径（空表示未打开文件） */
@@ -22,7 +23,9 @@ export const useEditorStore = create<EditorState>((set) => ({
   currentFile: null,
   content: '// 欢迎使用 Jeak Agent\n// 在左侧打开文件，或直接在此编辑\n',
   language: 'typescript',
-  openFile: (path, content, language) => set({ currentFile: path, content, language }),
+  openFile: (path, content, language) =>
+    // 用 Monaco 内置扩展名映射权威识别语言，覆盖主进程推断结果
+    set({ currentFile: path, content, language: detectLanguage(path) || language }),
   setContent: (content) => set({ content }),
   closeFile: () => set({ currentFile: null, content: '', language: 'plaintext' }),
   newFile: () => set({ currentFile: null, content: '', language: 'plaintext' })

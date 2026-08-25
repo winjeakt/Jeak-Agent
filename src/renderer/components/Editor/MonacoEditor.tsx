@@ -125,12 +125,13 @@ export default function MonacoEditor(): JSX.Element {
       language={language}
       value={content}
       onChange={(value) => setContent(value ?? '')}
-      theme={theme === 'light' ? 'vs' : 'vs-dark'}
+      theme={theme === 'light' ? 'codebuddy-light' : 'codebuddy-dark'}
       onMount={handleMount}
       loading={<div className="empty-placeholder">{'…'}</div>}
       options={{
         fontSize: 14,
-        fontFamily: "Consolas, 'Courier New', monospace",
+        fontFamily: "'Cascadia Code', 'JetBrains Mono', Consolas, 'Courier New', monospace",
+        fontLigatures: true,
         minimap: { enabled: true },
         scrollBeyondLastLine: false,
         automaticLayout: true,
@@ -140,7 +141,13 @@ export default function MonacoEditor(): JSX.Element {
         padding: { top: 8 },
         smoothScrolling: true,
         cursorBlinking: 'smooth',
-        mouseWheelZoom: true
+        mouseWheelZoom: true,
+        guides: {
+          indentation: true,
+          bracketPairs: true
+        },
+        bracketPairColorization: { enabled: true },
+        renderWhitespace: 'selection'
       }}
     />
   )

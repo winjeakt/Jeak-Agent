@@ -11,15 +11,17 @@
   --border-color: #333333;
   --text-primary: #cccccc;
   --text-secondary: #888888;
-  --accent: #0e639c;
+  --accent: #6C4DFF;
   --card-bg: #1f1f1f;
   --input-bg: #1a1a1a;
   --panel-header-bg: rgba(0, 0, 0, 0.15);
   --hover-bg: rgba(255, 255, 255, 0.06);
   --topbar-bg: #1e1e2e;
   --dropdown-bg: rgba(30, 30, 46, 0.92);
-  --menu-hover-bg: #0e639c;
+  --menu-hover-bg: #6C4DFF;
   --menu-hover-text: #ffffff;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
 }
 
 /* ===== 浅色主题变量 ===== */
@@ -30,15 +32,17 @@
   --border-color: #e0e0e0;
   --text-primary: #333333;
   --text-secondary: #666666;
-  --accent: #0066cc;
+  --accent: #583ED3;
   --card-bg: #ffffff;
   --input-bg: #ffffff;
   --panel-header-bg: rgba(0, 0, 0, 0.04);
   --hover-bg: rgba(0, 0, 0, 0.05);
   --topbar-bg: #f5f5f5;
   --dropdown-bg: rgba(245, 245, 245, 0.95);
-  --menu-hover-bg: #0066cc;
+  --menu-hover-bg: #583ED3;
   --menu-hover-text: #ffffff;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.18);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
 }
 
 body {
@@ -47,6 +51,32 @@ body {
   color: var(--text-primary);
   background: var(--bg-editor);
   user-select: none;
+}
+
+/* ===== 全局滚动条样式 ===== */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* ===== 应用根容器（标题栏 + 三栏） ===== */
@@ -71,6 +101,9 @@ body {
   min-width: 180px;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .app-shell__editor {
@@ -86,6 +119,9 @@ body {
   min-width: 260px;
   background: var(--bg-chat);
   border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ===== 面板通用 ===== */
@@ -113,6 +149,7 @@ body {
 
 .panel__body {
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -171,6 +208,7 @@ body {
 
 .chat-messages {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -624,12 +662,12 @@ body {
 }
 
 .settings-card__tabs button:hover {
-  background: var(--menu-hover-bg, #0e639c);
+  background: var(--menu-hover-bg, #6C4DFF);
   color: var(--menu-hover-text, #ffffff);
 }
 
 .settings-card__tabs button.active {
-  background: var(--menu-hover-bg, #0e639c);
+  background: var(--menu-hover-bg, #6C4DFF);
   color: var(--menu-hover-text, #ffffff);
 }
 
@@ -772,9 +810,9 @@ body {
 .perm-chip {
   font-size: 10px;
   font-family: Consolas, monospace;
-  color: #9cdcfe;
-  background: rgba(14, 99, 156, 0.2);
-  border: 1px solid rgba(14, 99, 156, 0.4);
+  color: #A78BFA;
+  background: rgba(108, 77, 255, 0.2);
+  border: 1px solid rgba(108, 77, 255, 0.4);
   border-radius: 4px;
   padding: 1px 6px;
 }
@@ -943,8 +981,8 @@ body {
   padding: 1px 8px;
   border-radius: 10px;
   font-weight: 600;
-  background: rgba(86, 156, 214, 0.15);
-  color: #569cd6;
+  background: rgba(108, 77, 255, 0.15);
+  color: #A78BFA;
 }
 
 /* ===== 全局 Toast ===== */
@@ -1070,7 +1108,7 @@ body {
 }
 
 .diagnostics__item:hover {
-  background: var(--menu-hover-bg, #0e639c);
+  background: var(--menu-hover-bg, #6C4DFF);
 }
 
 .diagnostics__item:hover .diagnostics__msg {
@@ -1100,7 +1138,7 @@ body {
 }
 
 .diagnostics__item--info .diagnostics__icon {
-  color: #569cd6;
+  color: #A78BFA;
 }
 
 .diagnostics__msg {
@@ -1396,9 +1434,9 @@ body {
 }
 
 .editor-toolbar__btn--active {
-  background: rgba(14, 99, 156, 0.25);
-  color: #9cdcfe;
-  border-color: rgba(14, 99, 156, 0.4);
+  background: rgba(108, 77, 255, 0.25);
+  color: #A78BFA;
+  border-color: rgba(108, 77, 255, 0.4);
 }
 
 /* ===== Phase 6：终端 ===== */
@@ -1591,6 +1629,7 @@ body {
 
 .filetree {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding-bottom: 8px;

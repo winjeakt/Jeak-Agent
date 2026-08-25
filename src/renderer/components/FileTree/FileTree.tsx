@@ -67,7 +67,7 @@ export default function FileTree(): JSX.Element {
   }
 
   return (
-    <div className="panel">
+    <div className="panel" style={{ flex: 1, minHeight: 0 }}>
       <div className="panel__header">
         <span>{t('panel.explorer')}</span>
         <button className="panel__action" title={t('menu.file.openFolder')} onClick={() => void openFolder()}>

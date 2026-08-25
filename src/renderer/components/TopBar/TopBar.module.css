@@ -39,7 +39,7 @@
 .logo {
   display: flex;
   align-items: center;
-  color: #9cdcfe;
+  color: #A78BFA;
 }
 
 .projectName {
@@ -145,7 +145,7 @@
 }
 
 .dropdownItem:hover {
-  background: var(--menu-hover-bg, #0e639c);
+  background: var(--menu-hover-bg, #6C4DFF);
   color: var(--menu-hover-text, #ffffff);
 }
 

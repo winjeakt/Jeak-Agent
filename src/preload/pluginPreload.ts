@@ -132,7 +132,7 @@ if (process.contextIsolated) {
     })
   }
 } else {
-  // @ts-ignore fallback（仅当 contextIsolation 关闭时）
+  // @ts-expect-error fallback（仅当 contextIsolation 关闭时）
   window.pluginAPI = api
 }
 

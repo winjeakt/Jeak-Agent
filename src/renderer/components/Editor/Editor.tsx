@@ -21,7 +21,7 @@ export default function Editor(): JSX.Element {
   const showDiagnostics = bottomPanel === 'diagnostics' || (bottomPanel === 'none' && diagnostics.length > 0)
 
   return (
-    <div className="panel" style={{ flex: 1 }}>
+    <div className="panel" style={{ flex: 1, minHeight: 0 }}>
       <div className="panel__header">
         <span>{currentFile ?? 'untitled'}</span>
       </div>

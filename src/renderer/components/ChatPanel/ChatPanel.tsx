@@ -185,7 +185,7 @@ export default function ChatPanel(): JSX.Element {
   }
 
   return (
-    <div className="panel">
+    <div className="panel" style={{ flex: 1, minHeight: 0 }}>
       <div className="panel__header">
         <span>{t('panel.chat')}</span>
         <div className="chat-header__actions">

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useI18nStore, useT } from '../stores/i18nStore'
+import { useT } from '../stores/i18nStore'
 import type { AIChatModel } from '@shared/types'
 import { MODEL_OPTIONS } from '../constants/models'
 

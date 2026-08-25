@@ -5,7 +5,6 @@ import type {
   AppSettings,
   AwesomePluginInfo,
   CheckUpdateResult,
-  Diagnostic,
   EditorApplyAction,
   EditorShowDiagnosticsAction,
   EditorStateSnapshot,
@@ -288,8 +287,8 @@ if (process.contextIsolated) {
     console.error(error)
   }
 } else {
-  // @ts-ignore fallback（仅当 contextIsolation 关闭时）
-  window.jeak = api
+  // fallback（仅当 contextIsolation 关闭时）
+  ;(globalThis as unknown as { jeak: typeof api }).jeak = api
 }
 
 export type JeakAPI = typeof api

@@ -132,33 +132,6 @@ async function fetchFileContent(ref: GitHubRef, remotePath: string): Promise<Buf
   throw new Error(`无法读取文件内容（缺少 content 与 download_url）：${remotePath}`)
 }
 
-/* ==================== 递归下载 ==================== */
-
-async function downloadGitHubItem(ref: GitHubRef, item: GitHubItem, localDir: string): Promise<void> {
-  const dest = join(localDir, item.name)
-  // 目录列表的 file 项不含 content，需单独请求单文件端点获取 base64 content
-  writeFileSync(dest, await fetchFileContent(ref, item.path))
-}
-
-/** 递归下载 remotePath 下的所有内容到 localDir（symlink / submodule 跳过） */
-async function downloadRecursive(ref: GitHubRef, remotePath: string, localDir: string): Promise<void> {
-  const listing = await fetchJson<GitHubItem | GitHubItem[]>(githubApiUrl(ref, remotePath))
-  // 单个对象：remotePath 指向单个文件
-  if (!Array.isArray(listing)) {
-    await downloadGitHubItem(ref, listing, localDir)
-    return
-  }
-  for (const item of listing) {
-    if (item.type === 'dir') {
-      const childDir = join(localDir, item.name)
-      mkdirSync(childDir, { recursive: true })
-      await downloadRecursive(ref, item.path, childDir)
-    } else if (item.type === 'file') {
-      await downloadGitHubItem(ref, item, localDir)
-    }
-  }
-}
-
 /* ==================== Tarball 批量下载（推荐路径） ==================== */
 
 /** 下载整个仓库的 tarball（走 codeload.github.com，不消耗 Contents API 速率限制） */

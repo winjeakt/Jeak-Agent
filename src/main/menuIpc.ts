@@ -13,35 +13,145 @@ import type {
 /** 最近打开项目的最大保留条数 */
 const MAX_RECENT = 10
 
+/** 扩展名 → Monaco 语言 id 映射（覆盖常见语言，渲染进程另有 Monaco 内置映射兜底） */
+const EXT_TO_LANG: Record<string, EditorLanguage> = {
+  // JavaScript / TypeScript
+  ts: 'typescript',
+  tsx: 'typescript',
+  mts: 'typescript',
+  cts: 'typescript',
+  js: 'javascript',
+  jsx: 'javascript',
+  mjs: 'javascript',
+  cjs: 'javascript',
+  es6: 'javascript',
+  // Web
+  json: 'json',
+  jsonc: 'json',
+  html: 'html',
+  htm: 'html',
+  shtml: 'html',
+  xhtml: 'html',
+  css: 'css',
+  scss: 'scss',
+  less: 'less',
+  xml: 'xml',
+  xsd: 'xml',
+  xaml: 'xml',
+  svg: 'xml',
+  yaml: 'yaml',
+  yml: 'yaml',
+  // 文档
+  md: 'markdown',
+  markdown: 'markdown',
+  mdown: 'markdown',
+  mkd: 'markdown',
+  mdx: 'mdx',
+  rst: 'restructuredtext',
+  // 脚本
+  py: 'python',
+  pyw: 'python',
+  rpy: 'python',
+  lua: 'lua',
+  sh: 'shell',
+  bash: 'shell',
+  bat: 'bat',
+  cmd: 'bat',
+  ps1: 'powershell',
+  psm1: 'powershell',
+  psd1: 'powershell',
+  rb: 'ruby',
+  rbx: 'ruby',
+  gemspec: 'ruby',
+  php: 'php',
+  phtml: 'php',
+  pl: 'perl',
+  pm: 'perl',
+  // 编译型
+  c: 'cpp',
+  cc: 'cpp',
+  cpp: 'cpp',
+  cxx: 'cpp',
+  h: 'cpp',
+  hpp: 'cpp',
+  hh: 'cpp',
+  ino: 'cpp',
+  cs: 'csharp',
+  csx: 'csharp',
+  java: 'java',
+  jav: 'java',
+  go: 'go',
+  rs: 'rust',
+  swift: 'swift',
+  kt: 'kotlin',
+  kts: 'kotlin',
+  scala: 'scala',
+  sc: 'scala',
+  sbt: 'scala',
+  fs: 'fsharp',
+  fsi: 'fsharp',
+  fsx: 'fsharp',
+  dart: 'dart',
+  ex: 'elixir',
+  exs: 'elixir',
+  jl: 'julia',
+  clj: 'clojure',
+  cljs: 'clojure',
+  cljc: 'clojure',
+  edn: 'clojure',
+  coffee: 'coffeescript',
+  r: 'r',
+  m: 'objective-c',
+  vb: 'vb',
+  sv: 'systemverilog',
+  svh: 'systemverilog',
+  pas: 'pascal',
+  pp: 'pascal',
+  scm: 'scheme',
+  ss: 'scheme',
+  dats: 'postiats',
+  sats: 'postiats',
+  pq: 'powerquery',
+  pqm: 'powerquery',
+  abap: 'abap',
+  cls: 'apex',
+  trigger: 'apex',
+  sol: 'solidity',
+  qs: 'qsharp',
+  wgsl: 'wgsl',
+  tcl: 'tcl',
+  // 数据库 / 查询
+  sql: 'sql',
+  mysql: 'mysql',
+  pgsql: 'pgsql',
+  graphql: 'graphql',
+  gql: 'graphql',
+  cypher: 'cypher',
+  cyp: 'cypher',
+  sparql: 'sparql',
+  rq: 'sparql',
+  redis: 'redis',
+  redshift: 'redshift',
+  // 配置 / 构建
+  ini: 'ini',
+  properties: 'ini',
+  conf: 'ini',
+  tf: 'hcl',
+  tfvars: 'hcl',
+  hcl: 'hcl',
+  proto: 'protobuf',
+  // 模板
+  pug: 'pug',
+  jade: 'pug',
+  hbs: 'handlebars',
+  handlebars: 'handlebars',
+  twig: 'twig'
+}
+
 /** 根据文件扩展名推断 Monaco 语言 */
 function inferLanguage(path: string): EditorLanguage {
   const ext = extname(path).slice(1).toLowerCase()
-  switch (ext) {
-    case 'ts':
-    case 'tsx':
-    case 'mts':
-    case 'cts':
-      return 'typescript'
-    case 'js':
-    case 'jsx':
-    case 'mjs':
-    case 'cjs':
-      return 'javascript'
-    case 'json':
-      return 'json'
-    case 'html':
-    case 'htm':
-      return 'html'
-    case 'css':
-      return 'css'
-    case 'md':
-    case 'markdown':
-      return 'markdown'
-    case 'py':
-      return 'python'
-    default:
-      return 'plaintext'
-  }
+  return EXT_TO_LANG[ext] ?? 'plaintext'
 }
 
 /** 目录树读取的忽略目录与限制 */
@@ -132,7 +242,16 @@ export function registerMenuIpc(opts: MenuIpcOptions): void {
       title: '打开文件',
       properties: ['openFile'],
       filters: [
-        { name: '代码文件', extensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'html', 'css', 'md', 'py'] },
+        {
+          name: '代码文件',
+          extensions: [
+            'ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs', 'json', 'html', 'htm', 'css', 'scss', 'less',
+            'md', 'markdown', 'mdx', 'py', 'lua', 'sh', 'bash', 'bat', 'ps1', 'rb', 'php', 'pl',
+            'c', 'h', 'cpp', 'hpp', 'cc', 'cs', 'java', 'go', 'rs', 'swift', 'kt', 'scala', 'fs',
+            'dart', 'ex', 'jl', 'clj', 'coffee', 'r', 'm', 'sql', 'mysql', 'graphql', 'yaml', 'yml',
+            'xml', 'ini', 'tf', 'proto', 'pug', 'hbs', 'sol'
+          ]
+        },
         { name: '所有文件', extensions: ['*'] }
       ]
     })
