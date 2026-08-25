@@ -82,13 +82,14 @@ jeak-agent/
 │   │   ├── loader/                    # 发现器、加载器（plugin.json 校验）
 │   │   ├── runtime/                   # 沙箱、安全上下文、管理器
 │   │   └── api/                       # 插件 API（ai/fs/editor/project/git/lint）
-│   └── shared/                        # 共享类型定义
+│   └── shared/                        # 共享类型与纯函数（语言检测等）
 ├── plugins-market/                    # 示例插件
 │   ├── code-formatter/                # 代码格式化
 │   ├── git-helper/                    # Git 辅助
 │   ├── eslint-integration/            # ESLint 集成
 │   └── demo-tools/                    # 端到端演示（MCP 工具 + 技能）
 ├── ARCHITECTURE.md                    # 架构方案文档
+├── CHANGELOG.md                       # 变更日志
 ├── electron.vite.config.ts
 ├── electron-builder.yml
 └── package.json
